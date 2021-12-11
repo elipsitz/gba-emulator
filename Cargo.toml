@@ -2,4 +2,5 @@
 
 members = [
     "ui",
+    "gba_core",
 ]
