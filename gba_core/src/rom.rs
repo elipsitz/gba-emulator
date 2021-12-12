@@ -1,4 +1,4 @@
-/// A GameBoy Advance ROM.
+/// A Game Boy Advance ROM.
 pub struct Rom {
     /// The ROM data.
     data: Box<[u8]>,
