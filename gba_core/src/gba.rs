@@ -1,7 +1,10 @@
-use crate::Rom;
+use crate::{Cpu, Rom};
 
 /// Game Boy Advance Emulator
 pub struct Gba {
+    /// CPU state.
+    cpu: Cpu,
+
     /// The 16 KiB BIOS ROM.
     bios_rom: Box<[u8]>,
 
@@ -19,6 +22,7 @@ impl Gba {
     /// Create a new GBA emulator from the given BIOS and cartridge.
     pub fn new(bios_rom: Box<[u8]>, cart_rom: Rom) -> Gba {
         Gba {
+            cpu: Cpu::new(),
             bios_rom,
             cart_rom,
             ewram: [0; 256 * 1024],
