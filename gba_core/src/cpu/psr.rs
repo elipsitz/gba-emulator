@@ -6,35 +6,35 @@ use bit::BitIndex;
 pub struct ProgramStatusRegister {
     /// Condition flag "negative".
     /// Bit 31 of PSR.
-    cond_flag_n: bool,
+    pub cond_flag_n: bool,
 
     /// Condition flag "zero".
     /// Bit 30 of PSR.
-    cond_flag_z: bool,
+    pub cond_flag_z: bool,
 
     /// Condition flag "carry".
     /// Bit 29 of PSR.
-    cond_flag_c: bool,
+    pub cond_flag_c: bool,
 
     /// Condition flag "overflow".
     /// Bit 28 of PSR.
-    cond_flag_v: bool,
+    pub cond_flag_v: bool,
 
     /// Interrupt disable "IRQ".
     /// Bit 7 of PSR.
-    interrupt_i: bool,
+    pub interrupt_i: bool,
 
     /// Interrupt disable "FIQ".
     /// Bit 6 of PSR.
-    interrupt_f: bool,
+    pub interrupt_f: bool,
 
     /// CPU Execution State. ARM or Thumb.
     /// Bit 5 of PSR -- 1 if Thumb, 0 if ARM.
-    execution_state: CpuExecutionState,
+    pub execution_state: CpuExecutionState,
 
     /// CPU mode.
     /// Bits 0-4 of PSR.
-    mode: CpuMode,
+    pub mode: CpuMode,
 }
 
 impl ProgramStatusRegister {

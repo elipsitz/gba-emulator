@@ -1,6 +1,7 @@
 mod psr;
 
 use psr::ProgramStatusRegister;
+use crate::Gba;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
@@ -87,5 +88,23 @@ impl Cpu {
             // (but not the canonical no-op).
             pipeline: [0; 2],
         }
+    }
+}
+
+impl Gba {
+    /// Do a single CPU emulation step (not necessarily a single clock cycle).
+    pub(crate) fn cpu_step(&mut self) {
+        // Pump the pipeline.
+        let opcode = self.cpu.pipeline[0];
+        self.cpu.pipeline[0] = self.cpu.pipeline[1];
+
+        // Advance PC and load the next instruction.
+        self.cpu.pc += match self.cpu.cpsr.execution_state {
+            CpuExecutionState::Thumb => 2,
+            CpuExecutionState::Arm => 4,
+        };
+        self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+
+        eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu.pc, opcode);
     }
 }

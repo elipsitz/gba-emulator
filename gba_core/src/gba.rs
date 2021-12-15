@@ -3,7 +3,7 @@ use crate::{Cpu, Rom};
 /// Game Boy Advance Emulator
 pub struct Gba {
     /// CPU state.
-    cpu: Cpu,
+    pub(crate) cpu: Cpu,
 
     /// The 16 KiB BIOS ROM.
     bios_rom: Box<[u8]>,
@@ -27,6 +27,13 @@ impl Gba {
             cart_rom,
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
+        }
+    }
+
+    /// Temporary: run the CPU for a bunch of cycles.
+    pub fn hack_run(&mut self) {
+        for _ in 0..100 {
+            self.cpu_step();
         }
     }
 }
