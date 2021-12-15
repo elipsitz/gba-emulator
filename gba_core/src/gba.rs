@@ -16,6 +16,7 @@ pub struct Gba {
 }
 
 impl Gba {
+    /// Create a new GBA emulator from the given BIOS and cartridge.
     pub fn new(bios_rom: Box<[u8]>, cart_rom: Rom) -> Gba {
         Gba {
             bios_rom,
