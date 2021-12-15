@@ -1,7 +1,7 @@
 mod psr;
 
-use psr::ProgramStatusRegister;
 use crate::Gba;
+use psr::ProgramStatusRegister;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u8)]
@@ -98,12 +98,24 @@ impl Gba {
         let opcode = self.cpu.pipeline[0];
         self.cpu.pipeline[0] = self.cpu.pipeline[1];
 
-        // Advance PC and load the next instruction.
-        self.cpu.pc += match self.cpu.cpsr.execution_state {
-            CpuExecutionState::Thumb => 2,
-            CpuExecutionState::Arm => 4,
-        };
-        self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+        match self.cpu.cpsr.execution_state {
+            CpuExecutionState::Thumb => {
+                self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+
+                // TODO execute `opcode`.
+
+                // Advance program counter.
+                self.cpu.pc += 2;
+            }
+            CpuExecutionState::Arm => {
+                self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+
+                // TODO check condition code and then execute `opcode`.
+
+                // Advance program counter.
+                self.cpu.pc += 4;
+            }
+        }
 
         eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu.pc, opcode);
     }
