@@ -18,11 +18,21 @@ pub trait Memory {
     }
 
     fn read_32(&mut self, addr: Addr) -> u32 {
-        (self.read_16(addr) as u32) | ((self.read_8(addr + 2) as u32) << 16)
+        (self.read_16(addr) as u32) | ((self.read_16(addr + 2) as u32) << 16)
     }
 
     fn write_32(&mut self, addr: Addr, value: u32) {
         self.write_16(addr, (value & 0xFFFF) as u16);
         self.write_16(addr + 2, ((value >> 16) & 0xFFFF) as u16);
+    }
+}
+
+impl Memory for [u8] {
+    fn read_8(&mut self, addr: Addr) -> u8 {
+        self[addr as usize]
+    }
+
+    fn write_8(&mut self, addr: Addr, value: u8) {
+        self[addr as usize] = value;
     }
 }

@@ -1,7 +1,7 @@
 /// A Game Boy Advance ROM.
 pub struct Rom {
     /// The ROM data.
-    data: Box<[u8]>,
+    pub(crate) data: Box<[u8]>,
 
     /// Game title.
     game_title: String,

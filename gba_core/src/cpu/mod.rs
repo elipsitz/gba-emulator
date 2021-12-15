@@ -1,5 +1,6 @@
 mod psr;
 
+use crate::bus::MemoryAccessType;
 use crate::Gba;
 use psr::ProgramStatusRegister;
 
@@ -97,10 +98,13 @@ impl Gba {
         // Pump the pipeline.
         let opcode = self.cpu.pipeline[0];
         self.cpu.pipeline[0] = self.cpu.pipeline[1];
+        eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu.pc, opcode);
 
         match self.cpu.cpsr.execution_state {
             CpuExecutionState::Thumb => {
-                self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+                // TODO: use correct memory fetch ordering
+                self.cpu.pipeline[1] =
+                    self.cpu_load16(self.cpu.pc, MemoryAccessType::NonSequential) as u32;
 
                 // TODO execute `opcode`.
 
@@ -108,7 +112,9 @@ impl Gba {
                 self.cpu.pc += 2;
             }
             CpuExecutionState::Arm => {
-                self.cpu.pipeline[1] = 0; // TODO: fetch instruction
+                // TODO: use correct memory fetch ordering
+                self.cpu.pipeline[1] =
+                    self.cpu_load32(self.cpu.pc, MemoryAccessType::NonSequential);
 
                 // TODO check condition code and then execute `opcode`.
 
@@ -116,7 +122,5 @@ impl Gba {
                 self.cpu.pc += 4;
             }
         }
-
-        eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu.pc, opcode);
     }
 }
