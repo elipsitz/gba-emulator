@@ -1,4 +1,4 @@
-use super::cond::Condition;
+use super::{cond::Condition, InstructionResult};
 use crate::Gba;
 
 use bit::BitIndex;
@@ -29,13 +29,42 @@ use bit::BitIndex;
 */
 
 impl Gba {
+    /// Get the program counter of the *currently executing instruction*.
+    fn inst_arm_pc(&self) -> u32 {
+        // Go back 2 instructions (because pipelining).
+        self.cpu.pc.wrapping_sub(8)
+    }
+
     /// Execute the given ARM instruction.
-    pub(crate) fn cpu_execute_arm(&mut self, opcode: u32) {
-        let condition: Condition = opcode.bit_range(28..32).into();
+    pub(super) fn cpu_execute_arm(&mut self, inst: u32) -> InstructionResult {
+        let condition: Condition = inst.bit_range(28..32).into();
         if !condition.evaluate(self) {
-            return;
+            return InstructionResult::Normal;
         }
 
-        println!("Executing {:X}", opcode);
+        let kind = inst.bit_range(25..28);
+        match kind {
+            0b101 => {
+                // Branch: B, BL
+                self.exec_branch(inst)
+            }
+            _ => {
+                panic!("Unknown ARM instruction: {:08x}", inst);
+            }
+        }
+    }
+
+    fn exec_branch(&mut self, inst: u32) -> InstructionResult {
+        // Current PC is actually PC + 8 due to pipeline.
+        let offset = ((inst.bit_range(0..24) << 8) as i32) >> 6;
+        let pc = ((self.cpu.pc as i32) + offset) as u32;
+
+        let link = inst.bit(24);
+        if link {
+            // Branch and link.
+            self.cpu_reg_set(14, self.inst_arm_pc() + 4);
+        }
+
+        InstructionResult::Jump(pc)
     }
 }

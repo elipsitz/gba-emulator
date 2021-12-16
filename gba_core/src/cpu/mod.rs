@@ -36,6 +36,15 @@ pub enum CpuMode {
     System = CPU_MODE_SYSTEM,
 }
 
+/// Instruction execution result.
+enum InstructionResult {
+    /// Regular instruction. Increment PC after.
+    Normal,
+
+    /// Jumped to a new PC.
+    Jump(u32),
+}
+
 /// State for the CPU.
 pub struct Cpu {
     /// r15: the program counter.
@@ -106,7 +115,7 @@ impl Gba {
             CpuExecutionState::Thumb => {
                 // TODO: use correct memory fetch ordering
                 self.cpu.pipeline[1] =
-                    self.cpu_load16(self.cpu.pc, MemoryAccessType::NonSequential) as u32;
+                    self.cpu_load16(self.cpu.pc, MemoryAccessType::Sequential) as u32;
 
                 // TODO execute `opcode`.
 
@@ -115,14 +124,49 @@ impl Gba {
             }
             CpuExecutionState::Arm => {
                 // TODO: use correct memory fetch ordering
-                self.cpu.pipeline[1] =
-                    self.cpu_load32(self.cpu.pc, MemoryAccessType::NonSequential);
+                self.cpu.pipeline[1] = self.cpu_load32(self.cpu.pc, MemoryAccessType::Sequential);
 
-                self.cpu_execute_arm(opcode);
-
-                // Advance program counter.
-                self.cpu.pc += 4;
+                match self.cpu_execute_arm(opcode) {
+                    InstructionResult::Normal => {
+                        // Advance program counter.
+                        self.cpu.pc += 4;
+                    }
+                    InstructionResult::Jump(pc) => {
+                        self.cpu_jump(pc);
+                    }
+                }
             }
+        }
+    }
+
+    /// Jump to the given address (and flush the pipeline).
+    fn cpu_jump(&mut self, pc: u32) {
+        self.cpu.pipeline[0] = self.cpu_load32(pc, MemoryAccessType::NonSequential);
+        self.cpu.pipeline[1] = self.cpu_load32(pc + 4, MemoryAccessType::Sequential);
+        self.cpu.pc = pc;
+    }
+
+    /// Set a register.
+    fn cpu_reg_set(&mut self, register: usize, value: u32) {
+        assert!(register <= 14);
+        match self.cpu.cpsr.mode {
+            CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
+            _ if (register == 13) => self.cpu.gpr_banked_r13[register] = value,
+            _ if (register == 14) => self.cpu.gpr_banked_r14[register] = value,
+            CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8] = value,
+            _ => self.cpu.gpr[register] = value,
+        }
+    }
+
+    /// Get a register.
+    fn cpu_reg_get(&mut self, register: usize) -> u32 {
+        assert!(register <= 14);
+        match self.cpu.cpsr.mode {
+            CpuMode::User | CpuMode::System => self.cpu.gpr[register],
+            _ if (register == 13) => self.cpu.gpr_banked_r13[register],
+            _ if (register == 14) => self.cpu.gpr_banked_r14[register],
+            CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8],
+            _ => self.cpu.gpr[register],
         }
     }
 }
