@@ -1,3 +1,5 @@
+mod arm;
+mod cond;
 mod psr;
 
 use crate::bus::MemoryAccessType;
@@ -116,7 +118,7 @@ impl Gba {
                 self.cpu.pipeline[1] =
                     self.cpu_load32(self.cpu.pc, MemoryAccessType::NonSequential);
 
-                // TODO check condition code and then execute `opcode`.
+                self.cpu_execute_arm(opcode);
 
                 // Advance program counter.
                 self.cpu.pc += 4;
