@@ -42,7 +42,7 @@ enum InstructionResult {
     Normal,
 
     /// Jumped to a new PC.
-    Jump(u32),
+    Branch(u32),
 }
 
 /// State for the CPU.
@@ -131,7 +131,7 @@ impl Gba {
                         // Advance program counter.
                         self.cpu.pc += 4;
                     }
-                    InstructionResult::Jump(pc) => {
+                    InstructionResult::Branch(pc) => {
                         self.cpu_jump(pc);
                     }
                 }

@@ -36,6 +36,18 @@ fn arm_unimplemented(_s: &mut Gba, inst: u32) -> InstructionResult {
     panic!("Unknown ARM instruction: {:08x} / {:032b}", inst, inst);
 }
 
+/// Branch, branch-and-link.
+fn arm_exec_branch<const LINK: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
+    // Current PC is actually PC + 8 due to pipeline.
+    let offset = ((inst.bit_range(0..24) << 8) as i32) >> 6;
+    let pc = ((s.cpu.pc as i32) + offset) as u32;
+
+    if LINK {
+        s.cpu_reg_set(14, s.inst_arm_pc() + 4);
+    }
+    InstructionResult::Branch(pc)
+}
+
 // Include look-up table for instruction handlers.
 include!(concat!(env!("OUT_DIR"), "/arm_table.rs"));
 
@@ -55,19 +67,5 @@ impl Gba {
 
         let key = (((inst >> 16) & 0xff0) | ((inst >> 4) & 0xf)) as usize;
         (ARM_HANDLERS[key])(self, inst)
-    }
-
-    fn exec_branch(&mut self, inst: u32) -> InstructionResult {
-        // Current PC is actually PC + 8 due to pipeline.
-        let offset = ((inst.bit_range(0..24) << 8) as i32) >> 6;
-        let pc = ((self.cpu.pc as i32) + offset) as u32;
-
-        let link = inst.bit(24);
-        if link {
-            // Branch and link.
-            self.cpu_reg_set(14, self.inst_arm_pc() + 4);
-        }
-
-        InstructionResult::Jump(pc)
     }
 }

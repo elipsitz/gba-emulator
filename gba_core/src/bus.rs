@@ -1,3 +1,5 @@
+#![allow(unused)]
+
 use crate::{Addr, Gba, Memory};
 
 /// Memory access types.

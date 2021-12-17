@@ -1,9 +1,17 @@
 use std::io::Write;
 use std::{fs::File, path::Path};
 
+use bit::BitIndex;
+
 /// Return the handler for the given instruction base.
-fn decode_arm_entry(_inst: u32) -> String {
-    "arm_unimplemented".to_string()
+fn decode_arm_entry(inst: u32) -> String {
+    match inst.bit_range(25..28) {
+        0b101 => {
+            // Branch, Branch-and-link.
+            format!("arm_exec_branch::<{LINK}>", LINK = inst.bit(24))
+        }
+        _ => "arm_unimplemented".to_string(),
+    }
 }
 
 fn generate_arm_table(file: &mut File) -> std::io::Result<()> {
