@@ -33,7 +33,18 @@ type ArmHandler = fn(&mut Gba, inst: u32) -> InstructionResult;
 
 /// Dummy unimplemented / invalid ARM instruction.
 fn arm_unimplemented(_s: &mut Gba, inst: u32) -> InstructionResult {
-    panic!("Unknown ARM instruction: {:08x} / {:032b}", inst, inst);
+    panic!(
+        "Unknown ARM instruction: {:08x} / {:04b}[{:04b} {:04b}]{:04b}_{:04b}_{:04b}[{:04b}]{:04b}",
+        inst,
+        (inst >> 28) & 0xf,
+        (inst >> 24) & 0xf,
+        (inst >> 20) & 0xf,
+        (inst >> 16) & 0xf,
+        (inst >> 12) & 0xf,
+        (inst >> 8) & 0xf,
+        (inst >> 4) & 0xf,
+        (inst >> 0) & 0xf,
+    );
 }
 
 /// Branch, branch-and-link.
