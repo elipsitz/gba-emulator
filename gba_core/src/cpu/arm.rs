@@ -28,6 +28,17 @@ use bit::BitIndex;
  |_Cond__|1_1_1_1|_____________Ignored_by_Processor______________| SWI
 */
 
+/// A function that can execute an ARM instruction.
+type ArmHandler = fn(&mut Gba, inst: u32) -> InstructionResult;
+
+/// Dummy unimplemented / invalid ARM instruction.
+fn arm_unimplemented(_s: &mut Gba, inst: u32) -> InstructionResult {
+    panic!("Unknown ARM instruction: {:08x} / {:032b}", inst, inst);
+}
+
+// Include look-up table for instruction handlers.
+include!(concat!(env!("OUT_DIR"), "/arm_table.rs"));
+
 impl Gba {
     /// Get the program counter of the *currently executing instruction*.
     fn inst_arm_pc(&self) -> u32 {
@@ -42,16 +53,8 @@ impl Gba {
             return InstructionResult::Normal;
         }
 
-        let kind = inst.bit_range(25..28);
-        match kind {
-            0b101 => {
-                // Branch: B, BL
-                self.exec_branch(inst)
-            }
-            _ => {
-                panic!("Unknown ARM instruction: {:08x}", inst);
-            }
-        }
+        let key = (((inst >> 16) & 0xff0) | ((inst >> 4) & 0xf)) as usize;
+        (ARM_HANDLERS[key])(self, inst)
     }
 
     fn exec_branch(&mut self, inst: u32) -> InstructionResult {
