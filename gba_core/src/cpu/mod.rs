@@ -1,3 +1,4 @@
+mod alu;
 mod arm;
 mod cond;
 mod psr;
@@ -24,6 +25,10 @@ const CPU_MODE_ABORT: u32 = 0b10111;
 const CPU_MODE_UNDEFINED: u32 = 0b11011;
 const CPU_MODE_SYSTEM: u32 = 0b11111;
 
+const REG_PC: usize = 15;
+const REG_LR: usize = 14;
+const REG_SP: usize = 13;
+
 #[derive(Copy, Clone, Debug)]
 #[repr(u32)]
 pub enum CpuMode {
@@ -34,6 +39,20 @@ pub enum CpuMode {
     Abort = CPU_MODE_ABORT,
     Undefined = CPU_MODE_UNDEFINED,
     System = CPU_MODE_SYSTEM,
+}
+
+impl CpuMode {
+    fn bank_index(self) -> usize {
+        use CpuMode::*;
+        match self {
+            User | System => 0,
+            Fiq => 1,
+            Supervisor => 2,
+            Abort => 3,
+            Irq => 4,
+            Undefined => 5,
+        }
+    }
 }
 
 /// Instruction execution result.
@@ -60,14 +79,14 @@ pub struct Cpu {
     pub gpr_banked_fiq: [u32; 5],
 
     /// Banked r13 for privileged modes (except system).
-    /// fiq, svc, abt, irq, und
-    pub gpr_banked_r13: [u32; 5],
+    /// _, fiq, svc, abt, irq, und
+    pub gpr_banked_r13: [u32; 6],
 
     /// Banked r14 for privileged modes (except system).
-    pub gpr_banked_r14: [u32; 5],
+    pub gpr_banked_r14: [u32; 6],
 
-    /// Saved program status register (for the current mode).
-    pub spsr: ProgramStatusRegister,
+    /// Saved program status register.
+    pub spsr: [ProgramStatusRegister; 6],
 
     /// Current program status register.
     pub cpsr: ProgramStatusRegister,
@@ -92,9 +111,9 @@ impl Cpu {
             pc: 0,
             gpr: [0; 15],
             gpr_banked_fiq: [0; 5],
-            gpr_banked_r13: [0; 5],
-            gpr_banked_r14: [0; 5],
-            spsr: ProgramStatusRegister::new(),
+            gpr_banked_r13: [0; 6],
+            gpr_banked_r14: [0; 6],
+            spsr: [ProgramStatusRegister::new(); 6],
             cpsr: ProgramStatusRegister::new(),
             // Starts filled with 0, which encodes a useless instruction
             // (but not the canonical no-op).
@@ -151,8 +170,8 @@ impl Gba {
         assert!(register <= 14);
         match self.cpu.cpsr.mode {
             CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
-            _ if (register == 13) => self.cpu.gpr_banked_r13[register] = value,
-            _ if (register == 14) => self.cpu.gpr_banked_r14[register] = value,
+            m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()] = value,
+            m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()] = value,
             CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8] = value,
             _ => self.cpu.gpr[register] = value,
         }
@@ -160,13 +179,20 @@ impl Gba {
 
     /// Get a register.
     fn cpu_reg_get(&mut self, register: usize) -> u32 {
-        assert!(register <= 14);
+        // TODO: recompute the banking on mode switch for efficiency.
+        assert!(register <= 15);
         match self.cpu.cpsr.mode {
             CpuMode::User | CpuMode::System => self.cpu.gpr[register],
-            _ if (register == 13) => self.cpu.gpr_banked_r13[register],
-            _ if (register == 14) => self.cpu.gpr_banked_r14[register],
+            _ if (register == REG_PC) => self.cpu.pc,
+            m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()],
+            m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()],
             CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8],
             _ => self.cpu.gpr[register],
         }
+    }
+
+    /// Do a CPU internal cycle.
+    fn cpu_internal_cycle(&mut self) {
+        // TODO implement this
     }
 }
