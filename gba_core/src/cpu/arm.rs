@@ -364,13 +364,29 @@ fn arm_exec_ldr_str_word_byte<
         s.cpu_reg_set(reg_n, computed);
     }
 
-    // TODO: double check cycles
-    // XXX: Next memory access (inst fetch) should be non sequential, right?
     if LOAD && reg_d == REG_PC {
         InstructionResult::Branch
     } else {
         InstructionResult::Normal
     }
+}
+
+/// Move PSR register to GP register.
+fn arm_exec_mrs<const USE_SPSR: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
+    todo!();
+}
+
+/// Move GP register or immediate to status register.
+fn arm_exec_msr<const USE_SPSR: bool, const IMMEDIATE: bool>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    todo!();
+}
+
+/// Branch / exchange instruction set.
+fn arm_exec_branch_exchange(s: &mut Gba, inst: u32) -> InstructionResult {
+    todo!();
 }
 
 // Include look-up table for instruction handlers.

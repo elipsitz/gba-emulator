@@ -22,6 +22,19 @@ fn decode_arm_entry(inst: u32) -> String {
                 REGSHIFT = inst.bit(4) && inst.bit(25),
             )
         }
+        0b000 if (inst.bit_range(23..25) == 0b10 && !inst.bit(20)) => {
+            // Miscellaneous functions.
+            match (inst.bit_range(4..8), inst.bit_range(21..23)) {
+                (0b0000, 0b00 | 0b10) => format!("arm_exec_mrs::<{R}>", R = inst.bit(22)),
+                (0b0000, 0b01 | 0b11) => format!("arm_exec_msr::<{R}, false>", R = inst.bit(22)),
+                (0b0001, 0b01) => format!("arm_exec_branch_exchange"),
+                _ => "arm_unimplemented".to_string(),
+            }
+        }
+        0b001 if (inst.bit_range(20..25) & 0b11011) == 0b10010 => {
+            // Move immediate to status register.
+            format!("arm_exec_msr::<{R}, true>", R = inst.bit(22))
+        }
         0b101 => {
             // Branch, Branch-and-link.
             format!("arm_exec_branch::<{LINK}>", LINK = inst.bit(24))
