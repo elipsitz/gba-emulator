@@ -60,8 +60,8 @@ enum InstructionResult {
     /// Regular instruction. Increment PC after.
     Normal,
 
-    /// Jumped to a new PC.
-    Branch(u32),
+    /// Jumped to a new PC. Don't increment PC.
+    Branch,
 }
 
 /// State for the CPU.
@@ -150,9 +150,7 @@ impl Gba {
                         // Advance program counter.
                         self.cpu.pc += 4;
                     }
-                    InstructionResult::Branch(pc) => {
-                        self.cpu_jump(pc);
-                    }
+                    InstructionResult::Branch => {}
                 }
             }
         }
@@ -167,9 +165,10 @@ impl Gba {
 
     /// Set a register.
     fn cpu_reg_set(&mut self, register: usize, value: u32) {
-        assert!(register <= 14);
+        assert!(register <= 15);
         match self.cpu.cpsr.mode {
             CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
+            _ if (register == REG_PC) => self.cpu_jump(value),
             m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()] = value,
             m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()] = value,
             CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8] = value,

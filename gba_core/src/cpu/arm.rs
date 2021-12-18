@@ -53,10 +53,11 @@ fn arm_exec_branch<const LINK: bool>(s: &mut Gba, inst: u32) -> InstructionResul
     let offset = ((inst.bit_range(0..24) << 8) as i32) >> 6;
     let pc = ((s.cpu.pc as i32) + offset) as u32;
 
+    s.cpu_reg_set(REG_PC, pc);
     if LINK {
         s.cpu_reg_set(REG_LR, s.inst_arm_pc() + 4);
     }
-    InstructionResult::Branch(pc)
+    InstructionResult::Branch
 }
 
 /// DataProc (ALU).
@@ -235,7 +236,8 @@ fn arm_exec_alu<
             // Copy SPSR to CPSR.
             s.cpu.cpsr = s.cpu.spsr[s.cpu.cpsr.mode.bank_index()];
         }
-        return InstructionResult::Branch(result);
+        s.cpu_reg_set(REG_PC, result);
+        return InstructionResult::Branch;
     }
 
     // Write condition flags to CSPR.
@@ -273,11 +275,11 @@ impl Gba {
     /// Execute the given ARM instruction.
     pub(super) fn cpu_execute_arm(&mut self, inst: u32) -> InstructionResult {
         let condition: Condition = inst.bit_range(28..32).into();
-        if !condition.evaluate(self) {
-            return InstructionResult::Normal;
+        if condition.evaluate(self) {
+            let key = (((inst >> 16) & 0xff0) | ((inst >> 4) & 0xf)) as usize;
+            (ARM_HANDLERS[key])(self, inst)
+        } else {
+            InstructionResult::Normal
         }
-
-        let key = (((inst >> 16) & 0xff0) | ((inst >> 4) & 0xf)) as usize;
-        (ARM_HANDLERS[key])(self, inst)
     }
 }
