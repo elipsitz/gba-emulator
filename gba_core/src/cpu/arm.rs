@@ -1,4 +1,4 @@
-use super::{alu, cond::Condition, InstructionResult, REG_LR, REG_PC};
+use super::{alu, cond::Condition, InstructionResult, MemoryAccessType, REG_LR, REG_PC};
 use crate::Gba;
 
 use bit::BitIndex;
@@ -260,6 +260,117 @@ fn arm_exec_alu<
     }
 
     InstructionResult::Normal
+}
+
+/// Load and store word or unsigned byte.
+fn arm_exec_ldr_str_word_byte<
+    const IMMEDIATE: bool,
+    const PREINDEX: bool,
+    const UP: bool,
+    const BYTE: bool,
+    const WRITEBACK: bool,
+    const LOAD: bool,
+    const SHIFT_TYPE: u32,
+>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    // IMMEDIATE, PREINDEX, U, WRITEBACK => used by addressing mode
+    // LOAD = 1 -> load; L = 0 -> store
+    // BYTE = 1 -> unsigned byte; BYTE = 0 -> word
+    let reg_d = inst.bit_range(12..16) as usize; // load/store register
+    let reg_n = inst.bit_range(16..20) as usize; // addressing register
+
+    if !PREINDEX && WRITEBACK {
+        todo!("Handle LDR/STR [T] instructions");
+    }
+
+    let offset = if !IMMEDIATE {
+        // IMMEDIATE=0 actually means... use the immediate.
+        inst.bit_range(0..12)
+    } else {
+        let shift_imm = inst.bit_range(7..12);
+        let reg_m = inst.bit_range(0..4) as usize;
+        let reg_m = s.cpu_reg_get(reg_m);
+        let shift_type = alu::AluShiftType::from_u32(SHIFT_TYPE); // bits 5 and 6
+
+        use alu::AluShiftType::*;
+        match shift_type {
+            LSL => reg_m << shift_imm,
+            LSR => {
+                if shift_imm == 0 {
+                    0
+                } else {
+                    reg_m >> shift_imm
+                }
+            }
+            ASR => {
+                if shift_imm == 0 {
+                    if reg_m.bit(31) {
+                        0xFFFFFFFF
+                    } else {
+                        0
+                    }
+                } else {
+                    ((reg_m as i32) >> shift_imm) as u32
+                }
+            }
+            ROR => {
+                if shift_imm == 0 {
+                    // RRX
+                    let carry = s.cpu.cpsr.cond_flag_c as u32;
+                    (carry << 31) | (reg_m >> 1)
+                } else {
+                    reg_m.rotate_right(shift_imm)
+                }
+            }
+        }
+    };
+
+    let base = s.cpu_reg_get(reg_n);
+    let computed = if UP {
+        base.wrapping_add(offset)
+    } else {
+        base.wrapping_sub(offset)
+    };
+
+    let address = if PREINDEX { computed } else { base };
+    if LOAD {
+        let data = if BYTE {
+            s.cpu_load8(address, MemoryAccessType::NonSequential) as u32
+        } else {
+            // XXX: is this supposed to involve the carry flag at all?
+            let address = address.rotate_right(8 * address.bit_range(0..2));
+            s.cpu_load32(address, MemoryAccessType::NonSequential)
+        };
+        s.cpu_internal_cycle();
+        s.cpu_reg_set(reg_d, data);
+    } else {
+        let data = s.cpu_reg_get(reg_d);
+        if BYTE {
+            s.cpu_store8(
+                address,
+                (data & 0xFF) as u8,
+                MemoryAccessType::NonSequential,
+            );
+        } else {
+            // STR instructions ignore the least significant two bits of address.
+            s.cpu_store32(address & !0b11, data, MemoryAccessType::NonSequential);
+        }
+    }
+
+    if (WRITEBACK || !PREINDEX) && (!LOAD || reg_d != reg_n) {
+        // TODO make sure to handle PC write correctly?
+        s.cpu_reg_set(reg_n, computed);
+    }
+
+    // TODO: double check cycles
+    // XXX: Next memory access (inst fetch) should be non sequential, right?
+    if LOAD && reg_d == REG_PC {
+        InstructionResult::Branch
+    } else {
+        InstructionResult::Normal
+    }
 }
 
 // Include look-up table for instruction handlers.

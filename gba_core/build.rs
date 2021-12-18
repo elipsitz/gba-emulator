@@ -26,6 +26,19 @@ fn decode_arm_entry(inst: u32) -> String {
             // Branch, Branch-and-link.
             format!("arm_exec_branch::<{LINK}>", LINK = inst.bit(24))
         }
+        0b010 | 0b011 => {
+            // Load and Store word or unsigned byte.
+            format!(
+                "arm_exec_ldr_str_word_byte::<{IMMEDIATE}, {PREINDEX}, {UP}, {BYTE}, {WRITEBACK}, {LOAD}, {SHIFT_TYPE}>",
+                IMMEDIATE = inst.bit(25),
+                PREINDEX = inst.bit(24),
+                UP = inst.bit(23),
+                BYTE = inst.bit(22),
+                WRITEBACK = inst.bit(21),
+                LOAD = inst.bit(20),
+                SHIFT_TYPE = inst.bit_range(5..7),
+            )
+        }
         _ => "arm_unimplemented".to_string(),
     }
 }
