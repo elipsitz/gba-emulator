@@ -55,7 +55,7 @@ fn arm_exec_branch<const LINK: bool>(s: &mut Gba, inst: u32) -> InstructionResul
 
     s.cpu_reg_set(REG_PC, pc);
     if LINK {
-        s.cpu_reg_set(REG_LR, s.inst_arm_pc() + 4);
+        s.cpu_reg_set(REG_LR, s.cpu_arm_pc() + 4);
     }
     InstructionResult::Branch
 }
@@ -266,8 +266,8 @@ fn arm_exec_alu<
 include!(concat!(env!("OUT_DIR"), "/arm_table.rs"));
 
 impl Gba {
-    /// Get the program counter of the *currently executing instruction*.
-    fn inst_arm_pc(&self) -> u32 {
+    /// Get the program counter of the *currently executing ARM instruction*.
+    pub fn cpu_arm_pc(&self) -> u32 {
         // Go back 2 instructions (because pipelining).
         self.cpu.pc.wrapping_sub(8)
     }

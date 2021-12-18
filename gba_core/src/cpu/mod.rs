@@ -128,7 +128,6 @@ impl Gba {
         // Pump the pipeline.
         let opcode = self.cpu.pipeline[0];
         self.cpu.pipeline[0] = self.cpu.pipeline[1];
-        eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu.pc, opcode);
 
         match self.cpu.cpsr.execution_state {
             CpuExecutionState::Thumb => {
@@ -142,6 +141,7 @@ impl Gba {
                 self.cpu.pc += 2;
             }
             CpuExecutionState::Arm => {
+                eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu_arm_pc(), opcode);
                 // TODO: use correct memory fetch ordering
                 self.cpu.pipeline[1] = self.cpu_load32(self.cpu.pc, MemoryAccessType::Sequential);
 
@@ -160,7 +160,7 @@ impl Gba {
     fn cpu_jump(&mut self, pc: u32) {
         self.cpu.pipeline[0] = self.cpu_load32(pc, MemoryAccessType::NonSequential);
         self.cpu.pipeline[1] = self.cpu_load32(pc + 4, MemoryAccessType::Sequential);
-        self.cpu.pc = pc;
+        self.cpu.pc = pc + 8;
     }
 
     /// Set a register.
