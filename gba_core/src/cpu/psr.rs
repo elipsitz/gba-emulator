@@ -74,17 +74,6 @@ impl Into<u32> for ProgramStatusRegister {
 
 impl From<u32> for ProgramStatusRegister {
     fn from(val: u32) -> Self {
-        let mode = match val.bit_range(0..5) {
-            super::CPU_MODE_USER => CpuMode::User,
-            super::CPU_MODE_FIQ => CpuMode::Fiq,
-            super::CPU_MODE_IRQ => CpuMode::Irq,
-            super::CPU_MODE_SUPERVISOR => CpuMode::Supervisor,
-            super::CPU_MODE_ABORT => CpuMode::Abort,
-            super::CPU_MODE_UNDEFINED => CpuMode::Undefined,
-            super::CPU_MODE_SYSTEM => CpuMode::System,
-            val @ _ => panic!("Unknown CPU mode {:X}", val),
-        };
-
         ProgramStatusRegister {
             cond_flag_n: val.bit(31),
             cond_flag_c: val.bit(30),
@@ -97,7 +86,7 @@ impl From<u32> for ProgramStatusRegister {
             } else {
                 CpuExecutionState::Arm
             },
-            mode,
+            mode: CpuMode::from_u32(val.bit_range(0..5)),
         }
     }
 }

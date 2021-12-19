@@ -1,5 +1,5 @@
 use super::{alu, cond::Condition, InstructionResult, MemoryAccessType, REG_LR, REG_PC};
-use crate::Gba;
+use crate::{cpu::CpuMode, Gba};
 
 use bit::BitIndex;
 
@@ -373,7 +373,21 @@ fn arm_exec_ldr_str_word_byte<
 
 /// Move PSR register to GP register.
 fn arm_exec_mrs<const USE_SPSR: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
-    todo!();
+    let reg_d = inst.bit_range(12..16) as usize;
+    let current_mode = s.cpu.cpsr.mode;
+    let value: u32 = if USE_SPSR {
+        if current_mode.has_spsr() {
+            s.cpu.spsr[current_mode.bank_index()].into()
+        } else {
+            0
+        }
+    } else {
+        s.cpu.cpsr.into()
+    };
+    if reg_d != REG_PC {
+        s.cpu_reg_set(reg_d, value);
+    }
+    InstructionResult::Normal
 }
 
 /// Move GP register or immediate to status register.
@@ -381,7 +395,48 @@ fn arm_exec_msr<const USE_SPSR: bool, const IMMEDIATE: bool>(
     s: &mut Gba,
     inst: u32,
 ) -> InstructionResult {
-    todo!();
+    let field_c = inst.bit(16);
+    #[allow(unused)]
+    let field_x = inst.bit(17);
+    #[allow(unused)]
+    let field_s = inst.bit(18);
+    let field_f = inst.bit(19);
+    let operand = if IMMEDIATE {
+        // Same as ALU.
+        let immed_8 = inst.bit_range(0..8);
+        let rotate_imm = inst.bit_range(8..12);
+        immed_8.rotate_right(2 * rotate_imm)
+    } else {
+        let reg_m = inst.bit_range(0..4) as usize;
+        s.cpu_reg_get(reg_m)
+    };
+
+    let current_mode = s.cpu.cpsr.mode;
+    dbg!(current_mode, USE_SPSR, operand);
+    let (psr, set_control, set_flags) = if USE_SPSR {
+        let psr = &mut s.cpu.spsr[current_mode.bank_index()];
+        let has_spsr = current_mode.has_spsr();
+        (psr, has_spsr, has_spsr)
+    } else {
+        let psr = &mut s.cpu.cpsr;
+        (psr, current_mode.is_privileged(), true)
+    };
+
+    if field_c && set_control {
+        // XXX: handle changing mode (if we have to do anything special like bank swapping).
+        psr.mode = CpuMode::from_u32(operand.bit_range(0..5));
+        // From the ARM ARM: The MSR instruction must not be used to alter the T bit in the CPSR.
+        // As such, we won't bother setting "execution_state" (ARM vs Thumb, the T bit).
+        psr.interrupt_f = operand.bit(6);
+        psr.interrupt_i = operand.bit(7);
+    }
+    if field_f && set_flags {
+        psr.cond_flag_n = operand.bit(31);
+        psr.cond_flag_c = operand.bit(30);
+        psr.cond_flag_z = operand.bit(29);
+        psr.cond_flag_v = operand.bit(28);
+    }
+    InstructionResult::Normal
 }
 
 /// Branch / exchange instruction set.

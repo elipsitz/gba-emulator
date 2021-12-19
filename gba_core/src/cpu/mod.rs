@@ -17,28 +17,20 @@ pub enum CpuExecutionState {
     Thumb = 1,
 }
 
-const CPU_MODE_USER: u32 = 0b10000;
-const CPU_MODE_FIQ: u32 = 0b10001;
-const CPU_MODE_IRQ: u32 = 0b10010;
-const CPU_MODE_SUPERVISOR: u32 = 0b10011;
-const CPU_MODE_ABORT: u32 = 0b10111;
-const CPU_MODE_UNDEFINED: u32 = 0b11011;
-const CPU_MODE_SYSTEM: u32 = 0b11111;
-
 const REG_PC: usize = 15;
 const REG_LR: usize = 14;
 const REG_SP: usize = 13;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 #[repr(u32)]
 pub enum CpuMode {
-    User = CPU_MODE_USER,
-    Fiq = CPU_MODE_FIQ,
-    Irq = CPU_MODE_IRQ,
-    Supervisor = CPU_MODE_SUPERVISOR,
-    Abort = CPU_MODE_ABORT,
-    Undefined = CPU_MODE_UNDEFINED,
-    System = CPU_MODE_SYSTEM,
+    User = 0b10000,
+    Fiq = 0b10001,
+    Irq = 0b10010,
+    Supervisor = 0b10011,
+    Abort = 0b10111,
+    Undefined = 0b11011,
+    System = 0b11111,
 }
 
 impl CpuMode {
@@ -51,6 +43,27 @@ impl CpuMode {
             Abort => 3,
             Irq => 4,
             Undefined => 5,
+        }
+    }
+
+    fn is_privileged(self) -> bool {
+        self != CpuMode::User
+    }
+
+    fn has_spsr(self) -> bool {
+        !matches!(self, CpuMode::User | CpuMode::System)
+    }
+
+    fn from_u32(value: u32) -> Self {
+        match value {
+            0b10000 => CpuMode::User,
+            0b10001 => CpuMode::Fiq,
+            0b10010 => CpuMode::Irq,
+            0b10011 => CpuMode::Supervisor,
+            0b10111 => CpuMode::Abort,
+            0b11011 => CpuMode::Undefined,
+            0b11111 => CpuMode::System,
+            val @ _ => panic!("Unknown CPU mode {:X}", val),
         }
     }
 }
@@ -172,8 +185,8 @@ impl Gba {
     fn cpu_reg_set(&mut self, register: usize, value: u32) {
         assert!(register <= 15);
         match self.cpu.cpsr.mode {
-            CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
             _ if (register == REG_PC) => self.cpu_jump(value),
+            CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
             m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()] = value,
             m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()] = value,
             CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8] = value,
@@ -186,8 +199,8 @@ impl Gba {
         // TODO: recompute the banking on mode switch for efficiency.
         assert!(register <= 15);
         match self.cpu.cpsr.mode {
-            CpuMode::User | CpuMode::System => self.cpu.gpr[register],
             _ if (register == REG_PC) => self.cpu.pc,
+            CpuMode::User | CpuMode::System => self.cpu.gpr[register],
             m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()],
             m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()],
             CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8],
