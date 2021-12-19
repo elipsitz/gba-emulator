@@ -59,10 +59,10 @@ fn arm_exec_branch<const LINK: bool>(s: &mut Gba, inst: u32) -> InstructionResul
     let offset = ((inst.bit_range(0..24) << 8) as i32) >> 6;
     let pc = ((s.cpu.pc as i32) + offset) as u32;
 
-    s.cpu_reg_set(REG_PC, pc);
     if LINK {
         s.cpu_reg_set(REG_LR, s.cpu_arm_pc() + 4);
     }
+    s.cpu_reg_set(REG_PC, pc);
     InstructionResult::Branch
 }
 
