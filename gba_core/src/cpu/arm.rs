@@ -1,7 +1,7 @@
 use super::{
     alu,
     cond::Condition,
-    InstructionResult,
+    CpuExecutionState, InstructionResult,
     MemoryAccessType::{self, *},
     REG_LR, REG_PC,
 };
@@ -520,7 +520,13 @@ fn arm_exec_ldm_stm<
 
 /// Branch / exchange instruction set.
 fn arm_exec_branch_exchange(s: &mut Gba, inst: u32) -> InstructionResult {
-    todo!();
+    use CpuExecutionState::*;
+    let reg_m = inst.bit_range(0..4) as usize;
+    let address = s.cpu_reg_get(reg_m);
+    let thumb = address.bit(0);
+    s.cpu.cpsr.execution_state = if thumb { Thumb } else { Arm };
+    s.cpu_jump(address);
+    InstructionResult::Branch
 }
 
 // Include look-up table for instruction handlers.
