@@ -138,6 +138,19 @@ impl Cpu {
             next_fetch_access: MemoryAccessType::NonSequential,
         }
     }
+
+    /// Set the CPU state such that it skips the BIOS.
+    pub fn skip_bios(&mut self) {
+        self.gpr_banked_r13[CpuMode::User.bank_index()] = 0x03007f00;
+        self.gpr_banked_r13[CpuMode::Fiq.bank_index()] = 0x03007f00;
+        self.gpr_banked_r13[CpuMode::Irq.bank_index()] = 0x03007fa0;
+        self.gpr_banked_r13[CpuMode::Supervisor.bank_index()] = 0x03007fe0;
+        self.gpr_banked_r13[CpuMode::Abort.bank_index()] = 0x03007f00;
+        self.gpr_banked_r13[CpuMode::Undefined.bank_index()] = 0x03007f00;
+        self.gpr[13] = 0x3007f00;
+        self.pc = 0x0800_0000;
+        self.cpsr = ProgramStatusRegister::from(0x5F);
+    }
 }
 
 impl Gba {

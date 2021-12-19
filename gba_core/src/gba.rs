@@ -34,9 +34,13 @@ impl Gba {
         }
     }
 
+    pub fn skip_bios(&mut self) {
+        self.cpu.skip_bios();
+    }
+
     /// Temporary: run the CPU for a bunch of cycles.
     pub fn hack_run(&mut self) {
-        for _ in 0..100 {
+        for _ in 0..200 {
             self.cpu_step();
         }
     }

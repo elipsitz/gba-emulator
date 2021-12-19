@@ -15,5 +15,6 @@ fn main() {
     println!("Loaded {:?}", rom);
 
     let mut gba = gba_core::Gba::new(bios.into(), rom);
+    gba.skip_bios();
     gba.hack_run();
 }
