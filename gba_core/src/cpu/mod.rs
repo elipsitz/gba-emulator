@@ -63,7 +63,7 @@ impl CpuMode {
             0b10111 => CpuMode::Abort,
             0b11011 => CpuMode::Undefined,
             0b11111 => CpuMode::System,
-            val @ _ => panic!("Unknown CPU mode {:X}", val),
+            val @ _ => panic!("Unknown CPU mode 0b{:05b}", val),
         }
     }
 }
@@ -99,7 +99,7 @@ pub struct Cpu {
     pub gpr_banked_r14: [u32; 6],
 
     /// Saved program status register.
-    pub spsr: [ProgramStatusRegister; 6],
+    pub spsr: [u32; 6],
 
     /// Current program status register.
     pub cpsr: ProgramStatusRegister,
@@ -130,7 +130,7 @@ impl Cpu {
             gpr_banked_fiq: [0; 5],
             gpr_banked_r13: [0; 6],
             gpr_banked_r14: [0; 6],
-            spsr: [ProgramStatusRegister::new(); 6],
+            spsr: [0; 6],
             cpsr: ProgramStatusRegister::new(),
             // Starts filled with 0, which encodes a useless instruction
             // (but not the canonical no-op).
