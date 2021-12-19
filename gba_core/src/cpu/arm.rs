@@ -442,8 +442,8 @@ fn arm_exec_msr<const USE_SPSR: bool, const IMMEDIATE: bool>(
         }
         if field_f {
             cpsr.cond_flag_n = operand.bit(31);
-            cpsr.cond_flag_c = operand.bit(30);
-            cpsr.cond_flag_z = operand.bit(29);
+            cpsr.cond_flag_z = operand.bit(30);
+            cpsr.cond_flag_c = operand.bit(29);
             cpsr.cond_flag_v = operand.bit(28);
         }
     }

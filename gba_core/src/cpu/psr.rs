@@ -46,8 +46,8 @@ impl ProgramStatusRegister {
     pub fn new() -> Self {
         ProgramStatusRegister {
             cond_flag_n: false,
-            cond_flag_c: false,
             cond_flag_z: false,
+            cond_flag_c: false,
             cond_flag_v: false,
             interrupt_i: true,
             interrupt_f: true,
@@ -61,8 +61,8 @@ impl Into<u32> for ProgramStatusRegister {
     fn into(self) -> u32 {
         let mut val = 0u32;
         val.set_bit(31, self.cond_flag_n);
-        val.set_bit(30, self.cond_flag_c);
-        val.set_bit(29, self.cond_flag_z);
+        val.set_bit(30, self.cond_flag_z);
+        val.set_bit(29, self.cond_flag_c);
         val.set_bit(28, self.cond_flag_v);
         val.set_bit(7, self.interrupt_i);
         val.set_bit(6, self.interrupt_f);
@@ -76,8 +76,8 @@ impl From<u32> for ProgramStatusRegister {
     fn from(val: u32) -> Self {
         ProgramStatusRegister {
             cond_flag_n: val.bit(31),
-            cond_flag_c: val.bit(30),
-            cond_flag_z: val.bit(29),
+            cond_flag_z: val.bit(30),
+            cond_flag_c: val.bit(29),
             cond_flag_v: val.bit(28),
             interrupt_i: val.bit(7),
             interrupt_f: val.bit(6),
