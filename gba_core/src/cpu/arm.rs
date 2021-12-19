@@ -1,8 +1,11 @@
-use super::{alu, cond::Condition, InstructionResult, MemoryAccessType, REG_LR, REG_PC};
-use crate::{
-    cpu::{psr::ProgramStatusRegister, CpuMode},
-    Gba,
+use super::{
+    alu,
+    cond::Condition,
+    InstructionResult,
+    MemoryAccessType::{self, *},
+    REG_LR, REG_PC,
 };
+use crate::{cpu::CpuMode, Gba};
 
 use bit::BitIndex;
 
@@ -368,6 +371,7 @@ fn arm_exec_ldr_str_word_byte<
         s.cpu_reg_set(reg_n, computed);
     }
 
+    s.cpu.next_fetch_access = NonSequential;
     if LOAD && reg_d == REG_PC {
         InstructionResult::Branch
     } else {
@@ -445,6 +449,69 @@ fn arm_exec_msr<const USE_SPSR: bool, const IMMEDIATE: bool>(
     }
 
     InstructionResult::Normal
+}
+
+/// Load/store multiple
+fn arm_exec_ldm_stm<
+    const PREINDEX: bool,
+    const UP: bool,
+    const S: bool,
+    const WRITEBACK: bool,
+    const LOAD: bool,
+>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    let reg_n = inst.bit_range(16..20) as usize;
+    let reg_list = inst.bit_range(0..16) as usize;
+    let base = s.cpu_reg_get(reg_n) & !0b11;
+
+    if S {
+        todo!("ldm/stm S flag not supported");
+    }
+    assert!(reg_list != 0, "ldm/stm with empty reg list");
+
+    let num_registers = reg_list.count_ones();
+    let start_address = match (PREINDEX, UP) {
+        (false, true) => base,                // Increment after.
+        (true, true) => base.wrapping_add(4), // Increment before.
+        (false, false) => base.wrapping_sub(4 * num_registers).wrapping_add(4), // Decrement after.
+        (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
+    };
+
+    let mut address = start_address;
+    let mut access_type = NonSequential;
+    for reg in 0..=REG_PC {
+        if reg_list.bit(reg) {
+            if LOAD {
+                let value = s.cpu_load32(address, access_type);
+                s.cpu_reg_set(reg, value);
+            } else {
+                let value = s.cpu_reg_get(reg);
+                s.cpu_store32(address, value, access_type);
+            }
+            address += 4;
+            access_type = Sequential;
+        }
+    }
+
+    if WRITEBACK {
+        // XXX: if the base register is in the register list
+        // but not the first register, the value stored is UNPREDICTABLE
+        let value = if UP {
+            base.wrapping_add(4 * num_registers)
+        } else {
+            base.wrapping_sub(4 * num_registers)
+        };
+        s.cpu_reg_set(reg_n, value); // XXX: what if we're writing PC?
+    }
+
+    if (LOAD && reg_list.bit(REG_PC)) || (reg_n == REG_PC && WRITEBACK) {
+        // We wrote the PC so it's a branch.
+        InstructionResult::Branch
+    } else {
+        InstructionResult::Normal
+    }
 }
 
 /// Branch / exchange instruction set.

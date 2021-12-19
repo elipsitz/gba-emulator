@@ -52,6 +52,17 @@ fn decode_arm_entry(inst: u32) -> String {
                 SHIFT_TYPE = inst.bit_range(5..7),
             )
         }
+        0b100 => {
+            // Load/store multiple.
+            format!(
+                "arm_exec_ldm_stm::<{PREINDEX}, {UP}, {S}, {WRITEBACK}, {LOAD}>",
+                PREINDEX = inst.bit(24),
+                UP = inst.bit(23),
+                S = inst.bit(22),
+                WRITEBACK = inst.bit(21),
+                LOAD = inst.bit(20),
+            )
+        }
         _ => "arm_unimplemented".to_string(),
     }
 }
