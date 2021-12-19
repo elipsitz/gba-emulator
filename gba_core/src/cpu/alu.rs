@@ -1,6 +1,6 @@
 use bit::BitIndex;
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AluOpcode {
     AND = 0x0, // logical and
     EOR = 0x1, // logical or

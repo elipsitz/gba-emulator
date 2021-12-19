@@ -69,7 +69,46 @@ fn decode_arm_entry(inst: u32) -> String {
 
 /// Return the Thumb handler for the given instruction base.
 fn decode_thumb_entry(inst: u16) -> String {
-    "thumb_unimplemented".to_string()
+    if u16_matches(inst, "001 ** *** ********") {
+        // THUMB.3: move/compare/add/subtract immediate
+        format!(
+            "thumb_exec_alu_immediate::<{OPCODE}, {REG_D}>",
+            OPCODE = inst.bit_range(11..13),
+            REG_D = inst.bit_range(8..11),
+        )
+    } else {
+        "thumb_unimplemented".to_string()
+    }
+}
+
+/// Returns whether the given u16 matches the given bit pattern.
+/// Bit pattern consists of a series of 0, 1, and *.
+fn u16_matches(num: u16, pattern: &str) -> bool {
+    let mut index = 15;
+    for char in pattern.chars() {
+        if char == '1' || char == '0' || char == '*' {
+            let bit = num.bit(index);
+            match char {
+                '1' => {
+                    if !bit {
+                        return false;
+                    }
+                }
+                '0' => {
+                    if bit {
+                        return false;
+                    }
+                }
+                _ => {}
+            }
+            if index == 0 {
+                return true;
+            } else {
+                index -= 1;
+            }
+        }
+    }
+    unreachable!("Got to the end of the pattern without hitting all bits");
 }
 
 fn generate_arm_table(file: &mut File) -> std::io::Result<()> {
