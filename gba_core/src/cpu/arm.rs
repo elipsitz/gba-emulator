@@ -479,6 +479,10 @@ fn arm_exec_ldm_stm<
         (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
     };
 
+    if LOAD {
+        s.cpu_internal_cycle();
+    }
+
     let mut address = start_address;
     let mut access_type = NonSequential;
     for reg in 0..=REG_PC {
