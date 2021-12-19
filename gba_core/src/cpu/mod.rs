@@ -2,6 +2,7 @@ mod alu;
 mod arm;
 mod cond;
 mod psr;
+mod thumb;
 
 use crate::bus::MemoryAccessType;
 use crate::Gba;
@@ -157,22 +158,38 @@ impl Gba {
     /// Do a single CPU emulation step (not necessarily a single clock cycle).
     pub(crate) fn cpu_step(&mut self) {
         // Pump the pipeline.
-        let opcode = self.cpu.pipeline[0];
+        let inst = self.cpu.pipeline[0];
         self.cpu.pipeline[0] = self.cpu.pipeline[1];
 
         match self.cpu.cpsr.execution_state {
             CpuExecutionState::Thumb => {
+                let inst = inst as u16;
+                eprintln!(
+                    "CPU [Thumb]: PC={:08x}, opcode={:04x}",
+                    self.cpu_thumb_pc(),
+                    inst
+                );
                 self.cpu.pipeline[1] =
                     self.cpu_load16(self.cpu.pc, self.cpu.next_fetch_access) as u32;
 
-                // TODO execute `opcode` then advance PC.
-                todo!();
+                match self.cpu_execute_thumb(inst) {
+                    InstructionResult::Normal => {
+                        // Advance program counter.
+                        self.cpu.pc += 2;
+                        self.cpu.next_fetch_access = MemoryAccessType::Sequential;
+                    }
+                    InstructionResult::Branch => {}
+                }
             }
             CpuExecutionState::Arm => {
-                eprintln!("cpu: PC={:08x}, opcode={:08x}", self.cpu_arm_pc(), opcode);
+                eprintln!(
+                    "CPU [ ARM ]: PC={:08x}, opcode={:08x}",
+                    self.cpu_arm_pc(),
+                    inst
+                );
                 self.cpu.pipeline[1] = self.cpu_load32(self.cpu.pc, self.cpu.next_fetch_access);
 
-                match self.cpu_execute_arm(opcode) {
+                match self.cpu_execute_arm(inst) {
                     InstructionResult::Normal => {
                         // Advance program counter.
                         self.cpu.pc += 4;
@@ -186,11 +203,21 @@ impl Gba {
 
     /// Jump to the given address (and flush the pipeline).
     fn cpu_jump(&mut self, pc: u32) {
-        // TODO: handle Thumb mode too
-        let pc = pc & !0b11;
-        self.cpu.pipeline[0] = self.cpu_load32(pc, MemoryAccessType::NonSequential);
-        self.cpu.pipeline[1] = self.cpu_load32(pc + 4, MemoryAccessType::Sequential);
-        self.cpu.pc = pc + 8;
+        // XXX: consider splitting this into a jump_arm and a jump_thumb.
+        match self.cpu.cpsr.execution_state {
+            CpuExecutionState::Thumb => {
+                let pc = pc & !0b1;
+                self.cpu.pipeline[0] = self.cpu_load16(pc, MemoryAccessType::NonSequential) as u32;
+                self.cpu.pipeline[1] = self.cpu_load16(pc + 2, MemoryAccessType::Sequential) as u32;
+                self.cpu.pc = pc + 4;
+            }
+            CpuExecutionState::Arm => {
+                let pc = pc & !0b11;
+                self.cpu.pipeline[0] = self.cpu_load32(pc, MemoryAccessType::NonSequential);
+                self.cpu.pipeline[1] = self.cpu_load32(pc + 4, MemoryAccessType::Sequential);
+                self.cpu.pc = pc + 8;
+            }
+        }
         self.cpu.next_fetch_access = MemoryAccessType::Sequential;
     }
 
