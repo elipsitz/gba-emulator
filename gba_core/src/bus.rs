@@ -27,6 +27,12 @@ const REGION_SRAM: Addr = 0x0E000000;
 impl Gba {
     /// Read a 32 bit value from the bus.
     pub fn cpu_load32(&mut self, addr: Addr, _access: MemoryAccessType) -> u32 {
+        // TODO: remove gbatest failure detection
+        if addr == 0x0400_0004 {
+            eprintln!("{}", self.cpu_format_debug());
+            panic!("cputest failed! see r12");
+        }
+
         // TODO increment cycles properly
         match addr & 0xFF000000 {
             // TODO only allow reading BIOS if PC is in BIOS

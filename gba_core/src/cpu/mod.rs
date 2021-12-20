@@ -235,7 +235,7 @@ impl Gba {
     }
 
     /// Get a register.
-    fn cpu_reg_get(&mut self, register: usize) -> u32 {
+    fn cpu_reg_get(&self, register: usize) -> u32 {
         // TODO: recompute the banking on mode switch for efficiency.
         assert!(register <= 15);
         match self.cpu.cpsr.mode {
@@ -251,5 +251,21 @@ impl Gba {
     /// Do a CPU internal cycle.
     fn cpu_internal_cycle(&mut self) {
         // TODO implement this
+    }
+
+    /// Format a debug dump of the CPU.
+    pub(crate) fn cpu_format_debug(&self) -> String {
+        use std::fmt::Write;
+        let mut s = String::new();
+        for reg in 0..16 {
+            let value = self.cpu_reg_get(reg);
+            write!(s, "r{:02}: {:08X}  ", reg, value).unwrap();
+            if reg % 4 == 3 {
+                writeln!(s).unwrap();
+            }
+        }
+        let cspr: u32 = self.cpu.cpsr.into();
+        writeln!(s, "cpsr: {:08X}", cspr).unwrap();
+        s
     }
 }

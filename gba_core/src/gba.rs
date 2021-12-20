@@ -6,6 +6,7 @@ pub struct Gba {
     pub(crate) cpu: Cpu,
 
     /// CPU cycle counter.
+    #[allow(unused)]
     pub(crate) cycles: usize,
 
     /// The 16 KiB BIOS ROM.
@@ -40,7 +41,7 @@ impl Gba {
 
     /// Temporary: run the CPU for a bunch of cycles.
     pub fn hack_run(&mut self) {
-        for _ in 0..200 {
+        for _ in 0..1000 {
             self.cpu_step();
         }
     }

@@ -123,7 +123,7 @@ fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> Instructio
         s.cpu_reg_get(REG_PC) & 0xFFFF_FFFC
     };
     let result = base.wrapping_add(immed * 4);
-    s.cpu_reg_set(reg_d, base);
+    s.cpu_reg_set(reg_d, result);
     InstructionResult::Normal
 }
 
