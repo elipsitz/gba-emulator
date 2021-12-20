@@ -423,13 +423,11 @@ fn arm_exec_msr<const USE_SPSR: bool, const IMMEDIATE: bool>(
 
     let current_mode = s.cpu_mode();
     if USE_SPSR {
-        if current_mode.has_spsr() {
-            if field_c {
-                s.cpu.spsr.set_bit_range(0..8, operand.bit_range(0..8));
-            }
-            if field_f {
-                s.cpu.spsr.set_bit_range(24..32, operand.bit_range(24..32));
-            }
+        if field_c {
+            s.cpu.spsr.set_bit_range(0..8, operand.bit_range(0..8));
+        }
+        if field_f {
+            s.cpu.spsr.set_bit_range(24..32, operand.bit_range(24..32));
         }
     } else {
         if field_c && current_mode.is_privileged() {
