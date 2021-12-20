@@ -103,7 +103,8 @@ fn arm_exec_alu<
         };
         (op2, shift_carry)
     } else {
-        let reg_m = s.cpu_reg_get(inst.bit_range(0..4) as usize);
+        let reg_idx_m = inst.bit_range(0..4) as usize;
+        let mut reg_m = s.cpu_reg_get(reg_idx_m);
         let shift_type = alu::AluShiftType::from_u32(SHIFT_TYPE); // bits 5 and 6
         if REGSHIFT {
             // bit 4
@@ -112,6 +113,9 @@ fn arm_exec_alu<
             s.cpu_internal_cycle();
             let reg_s = inst.bit_range(8..12) as usize;
             let reg_s = (s.cpu_reg_get(reg_s) & 0xFF) as usize;
+            if reg_idx_m == REG_PC {
+                reg_m += 4; // Some prefetching behavior.
+            }
             use alu::AluShiftType::*;
             match shift_type {
                 LSL => {
