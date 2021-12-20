@@ -1,4 +1,4 @@
-use super::{alu, Gba, InstructionResult};
+use super::{alu, CpuExecutionState, Gba, InstructionResult, REG_PC};
 use bit::BitIndex;
 
 /// A function that can execute a Thumb instruction.
@@ -55,6 +55,61 @@ fn thumb_exec_alu_immediate<const OPCODE: u16, const REG_D: u16>(
     }
 
     InstructionResult::Normal
+}
+
+// THUMB.5: Branch-exchange
+fn thumb_exec_bx<const MSB_REG_S: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    // reg_m in bits 3, 4, 5, and H2 in bit 6.
+    use CpuExecutionState::*;
+    let reg_m = inst.bit_range(3..7) as usize;
+    let address = s.cpu_reg_get(reg_m);
+    let thumb = address.bit(0);
+    s.cpu.cpsr.execution_state = if thumb { Thumb } else { Arm };
+    s.cpu_jump(address);
+    InstructionResult::Branch
+}
+
+// THUMB.5: Hi register operations
+fn thumb_exec_hireg<const OPCODE: u16, const MSB_REG_D: bool, const MSB_REG_S: bool>(
+    s: &mut Gba,
+    inst: u16,
+) -> InstructionResult {
+    let reg_s = inst.bit_range(3..7) as usize;
+    let reg_d = (inst.bit_range(0..3) as usize) & ((MSB_REG_D as usize) << 3);
+    let op1 = s.cpu_reg_get(reg_d);
+    let op2 = s.cpu_reg_get(reg_s);
+
+    // Decode operation.
+    use alu::AluOpcode::*;
+    let opcode = match OPCODE {
+        0b00 => ADD,
+        0b01 => CMP,
+        0b10 => MOV,
+        // 0b11 encodes BX and is handled by another function.
+        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    // Compute result.
+    let (result, carry, overflow) = match opcode {
+        ADD => (op1.wrapping_add(op2), false, false),
+        CMP => alu::calc_sub(op1, op2),
+        MOV => (op2, false, false),
+        _ => unsafe { std::hint::unreachable_unchecked() },
+    };
+    // Write back results.
+    if opcode == CMP {
+        s.cpu.cpsr.cond_flag_z = result == 0;
+        s.cpu.cpsr.cond_flag_n = result.bit(31);
+        s.cpu.cpsr.cond_flag_c = carry;
+        s.cpu.cpsr.cond_flag_v = overflow;
+        InstructionResult::Normal
+    } else {
+        s.cpu_reg_set(reg_d, result);
+        if reg_d == REG_PC {
+            InstructionResult::Branch
+        } else {
+            InstructionResult::Normal
+        }
+    }
 }
 
 // Include look-up table for instruction handlers.

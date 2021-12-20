@@ -76,6 +76,19 @@ fn decode_thumb_entry(inst: u16) -> String {
             OPCODE = inst.bit_range(11..13),
             REG_D = inst.bit_range(8..11),
         )
+    } else if u16_matches(inst, "010001 ** * * *** ***") {
+        // THUMB.5: Hi register operations/branch exchange.
+        let opcode = inst.bit_range(8..10);
+        if opcode == 0b11 {
+            format!("thumb_exec_bx::<{MSB_REG_S}>", MSB_REG_S = inst.bit(6),)
+        } else {
+            format!(
+                "thumb_exec_hireg::<{OPCODE}, {MSB_REG_D}, {MSB_REG_S}>",
+                OPCODE = inst.bit_range(8..10),
+                MSB_REG_D = inst.bit(7),
+                MSB_REG_S = inst.bit(6),
+            )
+        }
     } else {
         "thumb_unimplemented".to_string()
     }
