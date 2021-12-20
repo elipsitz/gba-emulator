@@ -352,9 +352,9 @@ fn arm_exec_ldr_str_word_byte<
         let data = if BYTE {
             s.cpu_load8(address, MemoryAccessType::NonSequential) as u32
         } else {
+            let value = s.cpu_load32(address & !0b11, MemoryAccessType::NonSequential);
             // XXX: is this supposed to involve the carry flag at all?
-            let address = address.rotate_right(8 * address.bit_range(0..2));
-            s.cpu_load32(address, MemoryAccessType::NonSequential)
+            value.rotate_right(8 * (address & 0b11))
         };
         s.cpu_internal_cycle();
         s.cpu_reg_set(reg_d, data);
