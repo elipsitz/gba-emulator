@@ -90,17 +90,23 @@ pub struct Cpu {
     pub gpr: [u32; 15],
 
     /// Banked registers for FIQ mode. r8 to r12.
-    pub gpr_banked_fiq: [u32; 5],
+    pub gpr_banked_fiq_r8_r12: [u32; 5],
 
-    /// Banked r13 for privileged modes (except system).
+    /// Old registers for r8 to r12 when we're in FIQ mode.
+    pub gpr_banked_old_r8_r12: [u32; 5],
+
+    /// Banked r13 for privileged modes.
     /// _, fiq, svc, abt, irq, und
     pub gpr_banked_r13: [u32; 6],
 
-    /// Banked r14 for privileged modes (except system).
+    /// Banked r14 for privileged modes.
     pub gpr_banked_r14: [u32; 6],
 
-    /// Saved program status register.
-    pub spsr: [u32; 6],
+    /// Banked SPSRs.
+    pub spsr_banked: [u32; 6],
+
+    /// Saved program status register for the current mode.
+    pub spsr: u32,
 
     /// Current program status register.
     pub cpsr: ProgramStatusRegister,
@@ -128,10 +134,12 @@ impl Cpu {
         Cpu {
             pc: 0,
             gpr: [0; 15],
-            gpr_banked_fiq: [0; 5],
+            gpr_banked_old_r8_r12: [0; 5],
+            gpr_banked_fiq_r8_r12: [0; 5],
             gpr_banked_r13: [0; 6],
             gpr_banked_r14: [0; 6],
-            spsr: [0; 6],
+            spsr_banked: [0; 6],
+            spsr: 0,
             cpsr: ProgramStatusRegister::new(),
             // Starts filled with 0, which encodes a useless instruction
             // (but not the canonical no-op).
@@ -148,9 +156,18 @@ impl Cpu {
         self.gpr_banked_r13[CpuMode::Supervisor.bank_index()] = 0x03007fe0;
         self.gpr_banked_r13[CpuMode::Abort.bank_index()] = 0x03007f00;
         self.gpr_banked_r13[CpuMode::Undefined.bank_index()] = 0x03007f00;
-        self.gpr[13] = 0x3007f00;
+        self.gpr[REG_SP] = 0x3007f00;
         self.pc = 0x0800_0000;
-        self.cpsr = ProgramStatusRegister::from(0x5F);
+        self.cpsr = ProgramStatusRegister {
+            cond_flag_n: false,
+            cond_flag_z: false,
+            cond_flag_c: false,
+            cond_flag_v: false,
+            interrupt_i: false,
+            interrupt_f: false,
+            execution_state: CpuExecutionState::Arm,
+            mode: CpuMode::System,
+        };
     }
 }
 
@@ -182,8 +199,9 @@ impl Gba {
                 }
             }
             CpuExecutionState::Arm => {
+                eprint!("\n\n{}", self.cpu_format_debug());
                 eprintln!(
-                    "CPU [ ARM ]: PC={:08x}, opcode={:08x}",
+                    "CPU [ ARM ]: PC={:08X}, opcode={:08X}",
                     self.cpu_arm_pc(),
                     inst
                 );
@@ -223,28 +241,62 @@ impl Gba {
 
     /// Set a register.
     fn cpu_reg_set(&mut self, register: usize, value: u32) {
-        assert!(register <= 15);
-        match self.cpu.cpsr.mode {
-            _ if (register == REG_PC) => self.cpu_jump(value),
-            CpuMode::User | CpuMode::System => self.cpu.gpr[register] = value,
-            m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()] = value,
-            m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()] = value,
-            CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8] = value,
-            _ => self.cpu.gpr[register] = value,
+        match register {
+            0..=14 => self.cpu.gpr[register] = value,
+            15 => self.cpu_jump(value),
+            _ => panic!("Invalid register {}", register),
         }
     }
 
     /// Get a register.
     fn cpu_reg_get(&self, register: usize) -> u32 {
-        // TODO: recompute the banking on mode switch for efficiency.
-        assert!(register <= 15);
-        match self.cpu.cpsr.mode {
-            _ if (register == REG_PC) => self.cpu.pc,
-            CpuMode::User | CpuMode::System => self.cpu.gpr[register],
-            m if (register == 13) => self.cpu.gpr_banked_r13[m.bank_index()],
-            m if (register == 14) => self.cpu.gpr_banked_r14[m.bank_index()],
-            CpuMode::Fiq if register >= 8 => self.cpu.gpr_banked_fiq[register - 8],
-            _ => self.cpu.gpr[register],
+        match register {
+            0..=14 => self.cpu.gpr[register],
+            15 => self.cpu.pc,
+            _ => panic!("Invalid register {}", register),
+        }
+    }
+
+    /// Get the current CPU mode.
+    #[inline(always)]
+    fn cpu_mode(&self) -> CpuMode {
+        self.cpu.cpsr.mode
+    }
+
+    /// Set the CPU mode, rebanking registers as necessary.
+    fn cpu_set_mode(&mut self, new_mode: CpuMode) {
+        let old_mode = self.cpu_mode();
+        self.cpu.cpsr.mode = new_mode;
+        let old_index = old_mode.bank_index();
+        let new_index = new_mode.bank_index();
+        if old_mode == new_mode || old_index == new_index {
+            return;
+        }
+
+        // First save banked registers of old mode...
+        self.cpu.spsr_banked[old_index] = self.cpu.spsr;
+        self.cpu.gpr_banked_r13[old_index] = self.cpu.gpr[13];
+        self.cpu.gpr_banked_r14[old_index] = self.cpu.gpr[14];
+
+        // Then restore the registers from the new mode.
+        self.cpu.spsr = self.cpu.spsr_banked[new_index];
+        self.cpu.gpr[13] = self.cpu.gpr_banked_r13[new_index];
+        self.cpu.gpr[14] = self.cpu.gpr_banked_r14[new_index];
+
+        // Switching out of FIQ: restore the non-FIQ r8-r12.
+        if old_mode == CpuMode::Fiq {
+            for i in 0..5 {
+                self.cpu.gpr_banked_fiq_r8_r12[i] = self.cpu.gpr[8 + i];
+                self.cpu.gpr[8 + i] = self.cpu.gpr_banked_old_r8_r12[i];
+            }
+        }
+
+        // Switching into FIQ: restore the FIQ r8-r12.
+        if new_mode == CpuMode::Fiq {
+            for i in 0..5 {
+                self.cpu.gpr_banked_old_r8_r12[i] = self.cpu.gpr[8 + i];
+                self.cpu.gpr[8 + i] = self.cpu.gpr_banked_fiq_r8_r12[i];
+            }
         }
     }
 
