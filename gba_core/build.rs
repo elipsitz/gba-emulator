@@ -6,6 +6,39 @@ use bit::BitIndex;
 /// Return the ARM handler for the given instruction base.
 fn decode_arm_entry(inst: u32) -> String {
     match inst.bit_range(25..28) {
+        0b000 if inst.bit(4) && inst.bit(7) => {
+            // Multiply and extra loads/stores.
+            if inst.bit_range(4..8) == 0b1001 && inst.bit_range(23..28) == 0b00000 {
+                // Multiply (accumulate)
+                format!(
+                    "arm_exec_mul::<{ACCUMULATE}, {SET_FLAGS}>",
+                    ACCUMULATE = inst.bit(21),
+                    SET_FLAGS = inst.bit(20),
+                )
+            } else if inst.bit_range(4..8) == 0b1001 && inst.bit_range(23..28) == 0b00001 {
+                // Multiply (accumulate) long
+                format!(
+                    "arm_exec_mul_long::<{SIGNED}, {ACCUMULATE}, {SET_FLAGS}>",
+                    SIGNED = inst.bit(22),
+                    ACCUMULATE = inst.bit(21),
+                    SET_FLAGS = inst.bit(20),
+                )
+            } else if inst.bit_range(4..8) == 0b1001 && inst.bit_range(23..28) == 0b00010 {
+                // Swap / swap byte.
+                format!("arm_exec_swap::<{BYTE}>", BYTE = inst.bit(22))
+            } else {
+                format!(
+                    "arm_exec_ld_st_halfword_byte::<{PREINDEX}, {UP}, {IMMEDIATE}, {WRITEBACK}, {LOAD}, {SIGNED}, {HALFWORD}>",
+                    PREINDEX = inst.bit(24),
+                    UP = inst.bit(23),
+                    IMMEDIATE = inst.bit(22),
+                    WRITEBACK = inst.bit(21),
+                    LOAD = inst.bit(20),
+                    SIGNED = inst.bit(6),
+                    HALFWORD = inst.bit(5),
+                )
+            }
+        }
         0b000 | 0b001 if !(inst.bit_range(23..25) == 0b10 && !inst.bit(20)) => {
             // ALU data processing instructions.
             // opcode = 21..25

@@ -527,6 +527,53 @@ fn arm_exec_branch_exchange(s: &mut Gba, inst: u32) -> InstructionResult {
     InstructionResult::Branch
 }
 
+fn arm_exec_mul<const ACCUMULATE: bool, const SET_FLAGS: bool>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    unimplemented!("mul: accumulate={}, set_flags={}", ACCUMULATE, SET_FLAGS);
+}
+
+fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS: bool>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    unimplemented!(
+        "mul: signed={}, accumulate={}, set_flags={}",
+        SIGNED,
+        ACCUMULATE,
+        SET_FLAGS
+    );
+}
+
+fn arm_exec_swap<const BYTE: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
+    todo!("swap:byte={}", BYTE);
+}
+
+fn arm_exec_ld_st_halfword_byte<
+    const PREINDEX: bool,
+    const UP: bool,
+    const IMMEDIATE: bool,
+    const WRITEBACK: bool,
+    const LOAD: bool,
+    const SIGNED: bool,
+    const HALFWORD: bool,
+>(
+    s: &mut Gba,
+    inst: u32,
+) -> InstructionResult {
+    todo!(
+        "ld/st hw/sb P={}, U={}, I={}, W={}, L={}, S={}, H={}",
+        PREINDEX,
+        UP,
+        IMMEDIATE,
+        WRITEBACK,
+        LOAD,
+        SIGNED,
+        HALFWORD
+    );
+}
+
 // Include look-up table for instruction handlers.
 include!(concat!(env!("OUT_DIR"), "/arm_table.rs"));
 
