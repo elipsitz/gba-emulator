@@ -19,7 +19,7 @@ fn decode_arm_entry(inst: u32) -> String {
                 IMM = inst.bit(25),
                 SETCOND = inst.bit(20),
                 SHIFT_TYPE = inst.bit_range(5..7),
-                REGSHIFT = inst.bit(4) && inst.bit(25),
+                REGSHIFT = inst.bit(4) && !inst.bit(25),
             )
         }
         0b000 if (inst.bit_range(23..25) == 0b10 && !inst.bit(20)) => {

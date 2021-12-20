@@ -111,7 +111,7 @@ fn arm_exec_alu<
             // Takes an extra internal cycle.
             s.cpu_internal_cycle();
             let reg_s = inst.bit_range(8..12) as usize;
-            let reg_s = (s.cpu_reg_get(reg_s) & 0xF) as usize;
+            let reg_s = (s.cpu_reg_get(reg_s) & 0xFF) as usize;
             use alu::AluShiftType::*;
             match shift_type {
                 LSL => {

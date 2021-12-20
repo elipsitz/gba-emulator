@@ -90,7 +90,7 @@ pub fn calc_sbc(op1: u32, op2: u32, carry: bool) -> (u32, bool, bool) {
     calc_adc(op1, !op2, carry)
 }
 
-#[derive(Copy, Clone, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum AluShiftType {
     /// Logical shift left.
     LSL = 0b00,
