@@ -253,7 +253,7 @@ fn arm_exec_alu<
             s.cpu.cpsr.cond_flag_n = result.bit(31);
         }
 
-        if reg_d == REG_PC {
+        if reg_d == REG_PC && s.cpu.cpsr.mode.has_spsr() {
             // Copy SPSR to CPSR.
             let spsr = s.cpu.spsr[s.cpu.cpsr.mode.bank_index()];
             s.cpu.cpsr = spsr.into();
