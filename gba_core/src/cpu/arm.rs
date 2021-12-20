@@ -240,17 +240,6 @@ fn arm_exec_alu<
         MVN => (!op2, false, false),
     };
 
-    // Writing to PC.
-    if reg_d == REG_PC {
-        if SETCOND {
-            // Copy SPSR to CPSR.
-            let spsr = s.cpu.spsr[s.cpu.cpsr.mode.bank_index()];
-            s.cpu.cpsr = spsr.into();
-        }
-        s.cpu_reg_set(REG_PC, result);
-        return InstructionResult::Branch;
-    }
-
     // Write condition flags to CSPR.
     if SETCOND {
         if opcode.is_logical() {
@@ -263,11 +252,20 @@ fn arm_exec_alu<
             s.cpu.cpsr.cond_flag_z = result == 0;
             s.cpu.cpsr.cond_flag_n = result.bit(31);
         }
+
+        if reg_d == REG_PC {
+            // Copy SPSR to CPSR.
+            let spsr = s.cpu.spsr[s.cpu.cpsr.mode.bank_index()];
+            s.cpu.cpsr = spsr.into();
+        }
     }
 
     // Write result to register (if not a test instruction).
     if !opcode.is_test() {
         s.cpu_reg_set(reg_d, result);
+        if reg_d == REG_PC {
+            return InstructionResult::Branch;
+        }
     }
 
     InstructionResult::Normal
