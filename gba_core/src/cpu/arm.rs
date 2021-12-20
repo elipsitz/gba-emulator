@@ -359,7 +359,12 @@ fn arm_exec_ldr_str_word_byte<
         s.cpu_internal_cycle();
         s.cpu_reg_set(reg_d, data);
     } else {
-        let data = s.cpu_reg_get(reg_d);
+        let mut data = s.cpu_reg_get(reg_d);
+        if reg_d == REG_PC {
+            // On GBA's ARM7TDMI-S, storing PC stores PC + 12 (so add 4 here).
+            data += 4;
+        }
+
         if BYTE {
             s.cpu_store8(
                 address,
