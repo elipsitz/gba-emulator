@@ -1,4 +1,4 @@
-use super::{alu, CpuExecutionState, Gba, InstructionResult, REG_PC};
+use super::{alu, CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP};
 use bit::BitIndex;
 
 /// A function that can execute a Thumb instruction.
@@ -110,6 +110,21 @@ fn thumb_exec_hireg<const OPCODE: u16, const MSB_REG_D: bool, const MSB_REG_S: b
             InstructionResult::Normal
         }
     }
+}
+
+// THUMB.12: get relative address
+fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let reg_d = inst.bit_range(8..11) as usize;
+    let immed = inst.bit_range(0..8) as u32;
+
+    let base = if SP {
+        s.cpu_reg_get(REG_SP)
+    } else {
+        s.cpu_reg_get(REG_PC) & 0xFFFF_FFFC
+    };
+    let result = base.wrapping_add(immed * 4);
+    s.cpu_reg_set(reg_d, base);
+    InstructionResult::Normal
 }
 
 // Include look-up table for instruction handlers.

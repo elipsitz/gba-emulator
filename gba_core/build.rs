@@ -89,6 +89,9 @@ fn decode_thumb_entry(inst: u16) -> String {
                 MSB_REG_S = inst.bit(6),
             )
         }
+    } else if u16_matches(inst, "1010 * *** ********") {
+        // THUMB.12: get relative address
+        format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)
     } else {
         "thumb_unimplemented".to_string()
     }
