@@ -114,3 +114,14 @@ impl AluShiftType {
         }
     }
 }
+
+/// Calculate the number of internal cycles required to multiply by the operand.
+pub fn multiply_internal_cycles(operand: u32) -> u32 {
+    // From the ARM7TDMI-S technical reference manual:
+    // 1 if bits[32:8] are all zero or one. -- 24
+    // 2 if bits[32:16] are all zero or one. -- 16
+    // 3 if bits[31:24] are all zero or one. -- 8
+    // 4 otherwise. -- 0
+    let leading_same = u32::max(operand.leading_ones(), operand.leading_zeros());
+    4 - (leading_same / 8)
+}

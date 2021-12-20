@@ -531,7 +531,32 @@ fn arm_exec_mul<const ACCUMULATE: bool, const SET_FLAGS: bool>(
     s: &mut Gba,
     inst: u32,
 ) -> InstructionResult {
-    unimplemented!("mul: accumulate={}, set_flags={}", ACCUMULATE, SET_FLAGS);
+    let reg_m = s.cpu_reg_get(inst.bit_range(0..4) as usize);
+    let reg_s = s.cpu_reg_get(inst.bit_range(8..12) as usize);
+    let reg_n = s.cpu_reg_get(inst.bit_range(12..16) as usize);
+    let reg_d = inst.bit_range(16..20) as usize;
+
+    let mut result = reg_m.wrapping_mul(reg_s);
+    if ACCUMULATE {
+        s.cpu_internal_cycle();
+        result = result.wrapping_add(reg_n);
+    }
+    if SET_FLAGS {
+        s.cpu.cpsr.cond_flag_n = result.bit(31);
+        s.cpu.cpsr.cond_flag_z = result == 0;
+    }
+    s.cpu_reg_set(reg_d, result);
+
+    let num_internal_cycles = alu::multiply_internal_cycles(reg_s);
+    for _ in 0..num_internal_cycles {
+        s.cpu_internal_cycle();
+    }
+
+    if reg_d == REG_PC {
+        InstructionResult::Branch
+    } else {
+        InstructionResult::Normal
+    }
 }
 
 fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS: bool>(
@@ -539,7 +564,7 @@ fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS
     inst: u32,
 ) -> InstructionResult {
     unimplemented!(
-        "mul: signed={}, accumulate={}, set_flags={}",
+        "mul long: signed={}, accumulate={}, set_flags={}",
         SIGNED,
         ACCUMULATE,
         SET_FLAGS
@@ -562,16 +587,11 @@ fn arm_exec_ld_st_halfword_byte<
     s: &mut Gba,
     inst: u32,
 ) -> InstructionResult {
-    todo!(
+    eprintln!(
         "ld/st hw/sb P={}, U={}, I={}, W={}, L={}, S={}, H={}",
-        PREINDEX,
-        UP,
-        IMMEDIATE,
-        WRITEBACK,
-        LOAD,
-        SIGNED,
-        HALFWORD
+        PREINDEX, UP, IMMEDIATE, WRITEBACK, LOAD, SIGNED, HALFWORD
     );
+    InstructionResult::Normal
 }
 
 // Include look-up table for instruction handlers.
