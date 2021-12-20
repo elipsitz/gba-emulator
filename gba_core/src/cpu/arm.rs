@@ -552,23 +552,44 @@ fn arm_exec_mul<const ACCUMULATE: bool, const SET_FLAGS: bool>(
         s.cpu_internal_cycle();
     }
 
-    if reg_d == REG_PC {
-        InstructionResult::Branch
-    } else {
-        InstructionResult::Normal
-    }
+    InstructionResult::Normal
 }
 
 fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS: bool>(
     s: &mut Gba,
     inst: u32,
 ) -> InstructionResult {
-    unimplemented!(
-        "mul long: signed={}, accumulate={}, set_flags={}",
-        SIGNED,
-        ACCUMULATE,
-        SET_FLAGS
-    );
+    let reg_m = s.cpu_reg_get(inst.bit_range(0..4) as usize);
+    let reg_s = s.cpu_reg_get(inst.bit_range(8..12) as usize);
+    let reg_lo = inst.bit_range(12..16) as usize;
+    let reg_hi = inst.bit_range(16..20) as usize;
+
+    let mut result = if SIGNED {
+        (reg_m as i32 as i64).wrapping_mul(reg_s as i32 as i64) as u64
+    } else {
+        (reg_m as u64).wrapping_mul(reg_s as u64)
+    };
+    if ACCUMULATE {
+        s.cpu_internal_cycle();
+        let lo = s.cpu_reg_get(reg_lo) as u64;
+        let hi = s.cpu_reg_get(reg_hi) as u64;
+        result = result.wrapping_add(hi << 32 | lo);
+    }
+
+    s.cpu_reg_set(reg_hi, (result >> 32) as u32);
+    s.cpu_reg_set(reg_lo, (result & 0xFFFF_FFFF) as u32);
+    if SET_FLAGS {
+        s.cpu.cpsr.cond_flag_n = result.bit(31);
+        s.cpu.cpsr.cond_flag_z = result == 0;
+    }
+
+    s.cpu_internal_cycle(); // Multiply long has an additional cycle.
+    let num_internal_cycles = alu::multiply_internal_cycles(reg_s);
+    for _ in 0..num_internal_cycles {
+        s.cpu_internal_cycle();
+    }
+
+    InstructionResult::Normal
 }
 
 fn arm_exec_swap<const BYTE: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
