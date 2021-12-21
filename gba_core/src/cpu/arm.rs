@@ -493,12 +493,13 @@ fn arm_exec_ldm_stm<
 
     let mut address = start_address;
     let mut access_type = NonSequential;
+    let mut first = true;
     for reg in 0..=REG_PC {
         if reg_list.bit(reg) {
             if LOAD {
                 let value = s.cpu_load32(address, access_type);
                 s.cpu_reg_set(reg, value);
-                if S {
+                if reg == REG_PC && S {
                     s.restore_spsr();
                 }
             } else {
@@ -507,8 +508,18 @@ fn arm_exec_ldm_stm<
                     // STM actually loads PC + 12 (so add 4 here).
                     value += 4;
                 }
+                if reg == reg_n && !first {
+                    // Storing the address base register.
+                    // Store the *new* value.
+                    value = if UP {
+                        base.wrapping_add(4 * num_registers)
+                    } else {
+                        base.wrapping_sub(4 * num_registers)
+                    };
+                }
                 s.cpu_store32(address, value, access_type);
             }
+            first = false;
             address += 4;
             access_type = Sequential;
         }
@@ -518,9 +529,12 @@ fn arm_exec_ldm_stm<
         s.cpu_set_mode(previous_mode);
     }
 
-    if WRITEBACK {
-        // XXX: if the base register is in the register list
-        // but not the first register, the value stored is UNPREDICTABLE
+    if WRITEBACK && !(LOAD && reg_list.bit(reg_n)) {
+        // According to GBATEK for ARMv4:
+        // Writeback with Rb included in Rlist:
+        // STM: Store OLD base if Rb is FIRST entry in Rlist, otherwise store NEW base
+        // LDM: no writeback
+
         let value = if UP {
             base.wrapping_add(4 * num_registers)
         } else {
