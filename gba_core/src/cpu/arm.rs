@@ -467,7 +467,7 @@ fn arm_exec_ldm_stm<
 ) -> InstructionResult {
     let reg_n = inst.bit_range(16..20) as usize;
     let reg_list = inst.bit_range(0..16) as usize;
-    let base = s.cpu_reg_get(reg_n) & !0b11;
+    let base = s.cpu_reg_get(reg_n);
 
     if S {
         todo!("ldm/stm S flag not supported");
@@ -481,6 +481,7 @@ fn arm_exec_ldm_stm<
         (false, false) => base.wrapping_sub(4 * num_registers).wrapping_add(4), // Decrement after.
         (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
     };
+    let start_address = start_address & !0b11;
 
     if LOAD {
         s.cpu_internal_cycle();
@@ -494,7 +495,11 @@ fn arm_exec_ldm_stm<
                 let value = s.cpu_load32(address, access_type);
                 s.cpu_reg_set(reg, value);
             } else {
-                let value = s.cpu_reg_get(reg);
+                let mut value = s.cpu_reg_get(reg);
+                if reg == REG_PC {
+                    // STM actually loads PC + 12 (so add 4 here).
+                    value += 4;
+                }
                 s.cpu_store32(address, value, access_type);
             }
             address += 4;
