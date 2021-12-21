@@ -96,6 +96,10 @@ fn decode_arm_entry(inst: u32) -> String {
                 LOAD = inst.bit(20),
             )
         }
+        0b111 if inst.bit(24) => {
+            // Software interrupt.
+            "arm_exec_swi".to_string()
+        }
         _ => "arm_unimplemented".to_string(),
     }
 }

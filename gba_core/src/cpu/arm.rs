@@ -1,6 +1,7 @@
 use super::{
     alu,
     cond::Condition,
+    exception::ExceptionType,
     CpuExecutionState, InstructionResult,
     MemoryAccessType::{self, *},
     REG_LR, REG_PC,
@@ -719,6 +720,12 @@ fn arm_exec_ld_st_halfword_byte<
     // XXX: if reg_d is REG_PC, it's *unpredictable*.
     s.cpu.next_fetch_access = NonSequential;
     InstructionResult::Normal
+}
+
+fn arm_exec_swi(s: &mut Gba, _inst: u32) -> InstructionResult {
+    let return_address = s.cpu_arm_pc() + 4;
+    s.cpu_exception(ExceptionType::SoftwareInterrupt, return_address);
+    InstructionResult::Branch
 }
 
 // Include look-up table for instruction handlers.

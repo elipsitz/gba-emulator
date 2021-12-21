@@ -1,6 +1,7 @@
 mod alu;
 mod arm;
 mod cond;
+mod exception;
 mod psr;
 mod thumb;
 
