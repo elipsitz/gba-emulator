@@ -462,11 +462,10 @@ fn arm_exec_ldm_stm<
     inst: u32,
 ) -> InstructionResult {
     let reg_n = inst.bit_range(16..20) as usize;
-    let reg_list = inst.bit_range(0..16) as usize;
+    let mut reg_list = inst.bit_range(0..16) as usize;
     let base = s.cpu_reg_get(reg_n);
-    assert!(reg_list != 0, "ldm/stm with empty reg list");
 
-    let num_registers = reg_list.count_ones();
+    let mut num_registers = reg_list.count_ones();
     let start_address = match (PREINDEX, UP) {
         (false, true) => base,                // Increment after.
         (true, true) => base.wrapping_add(4), // Increment before.
@@ -474,6 +473,14 @@ fn arm_exec_ldm_stm<
         (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
     };
     let start_address = start_address & !0b11;
+
+    // Weird behavior ("unpredictable" according to the ARM ARM).
+    // If the list is empty, it'll transfer r15 only, but decrement/increment as if
+    // all registers were transferred.
+    if num_registers == 0 {
+        reg_list = 1 << 15;
+        num_registers = 16;
+    }
 
     if LOAD {
         s.cpu_internal_cycle();
