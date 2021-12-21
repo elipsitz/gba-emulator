@@ -257,10 +257,7 @@ fn arm_exec_alu<
         }
 
         if reg_d == REG_PC && s.cpu_mode().has_spsr() {
-            // Copy SPSR to CPSR. Switch mode first (to bank registers).
-            let new_cpsr: ProgramStatusRegister = s.cpu.spsr.into();
-            s.cpu_set_mode(new_cpsr.mode);
-            s.cpu.cpsr = new_cpsr;
+            s.restore_spsr();
         }
     }
 
@@ -378,7 +375,6 @@ fn arm_exec_ldr_str_word_byte<
     }
 
     if (WRITEBACK || !PREINDEX) && (!LOAD || reg_d != reg_n) {
-        // TODO make sure to handle PC write correctly?
         s.cpu_reg_set(reg_n, computed);
     }
 
@@ -468,10 +464,6 @@ fn arm_exec_ldm_stm<
     let reg_n = inst.bit_range(16..20) as usize;
     let reg_list = inst.bit_range(0..16) as usize;
     let base = s.cpu_reg_get(reg_n);
-
-    if S {
-        todo!("ldm/stm S flag not supported");
-    }
     assert!(reg_list != 0, "ldm/stm with empty reg list");
 
     let num_registers = reg_list.count_ones();
@@ -487,6 +479,11 @@ fn arm_exec_ldm_stm<
         s.cpu_internal_cycle();
     }
 
+    let previous_mode = s.cpu_mode();
+    if S {
+        s.cpu_set_mode(CpuMode::User);
+    }
+
     let mut address = start_address;
     let mut access_type = NonSequential;
     for reg in 0..=REG_PC {
@@ -494,6 +491,9 @@ fn arm_exec_ldm_stm<
             if LOAD {
                 let value = s.cpu_load32(address, access_type);
                 s.cpu_reg_set(reg, value);
+                if S {
+                    s.restore_spsr();
+                }
             } else {
                 let mut value = s.cpu_reg_get(reg);
                 if reg == REG_PC {
@@ -505,6 +505,10 @@ fn arm_exec_ldm_stm<
             address += 4;
             access_type = Sequential;
         }
+    }
+
+    if S {
+        s.cpu_set_mode(previous_mode);
     }
 
     if WRITEBACK {
@@ -715,5 +719,12 @@ impl Gba {
         } else {
             InstructionResult::Normal
         }
+    }
+
+    fn restore_spsr(&mut self) {
+        // Copy SPSR to CPSR. Switch mode first (to bank registers).
+        let new_cpsr: ProgramStatusRegister = self.cpu.spsr.into();
+        self.cpu_set_mode(new_cpsr.mode);
+        self.cpu.cpsr = new_cpsr;
     }
 }
