@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 gba_core = { path = "../gba_core" }
+minifb = "0.20.0"
