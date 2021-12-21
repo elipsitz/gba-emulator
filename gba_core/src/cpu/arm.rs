@@ -466,14 +466,6 @@ fn arm_exec_ldm_stm<
     let base = s.cpu_reg_get(reg_n);
 
     let mut num_registers = reg_list.count_ones();
-    let start_address = match (PREINDEX, UP) {
-        (false, true) => base,                // Increment after.
-        (true, true) => base.wrapping_add(4), // Increment before.
-        (false, false) => base.wrapping_sub(4 * num_registers).wrapping_add(4), // Decrement after.
-        (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
-    };
-    let start_address = start_address & !0b11;
-
     // Weird behavior ("unpredictable" according to the ARM ARM).
     // If the list is empty, it'll transfer r15 only, but decrement/increment as if
     // all registers were transferred.
@@ -481,6 +473,14 @@ fn arm_exec_ldm_stm<
         reg_list = 1 << 15;
         num_registers = 16;
     }
+
+    let start_address = match (PREINDEX, UP) {
+        (false, true) => base,                // Increment after.
+        (true, true) => base.wrapping_add(4), // Increment before.
+        (false, false) => base.wrapping_sub(4 * num_registers).wrapping_add(4), // Decrement after.
+        (true, false) => base.wrapping_sub(4 * num_registers), // Decrement before.
+    };
+    let start_address = start_address & !0b11;
 
     if LOAD {
         s.cpu_internal_cycle();
