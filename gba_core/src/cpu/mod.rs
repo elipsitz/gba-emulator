@@ -183,11 +183,11 @@ impl Gba {
             CpuExecutionState::Thumb => {
                 let inst = inst as u16;
                 // eprint!("\n\n{}", self.cpu_format_debug());
-                eprintln!(
+                /*eprintln!(
                     "CPU [Thumb]: PC={:08X}, opcode={:04X}",
                     self.cpu_thumb_pc(),
                     inst
-                );
+                );*/
                 self.cpu.pipeline[1] =
                     self.cpu_load16(self.cpu.pc, self.cpu.next_fetch_access) as u32;
 
@@ -202,11 +202,11 @@ impl Gba {
             }
             CpuExecutionState::Arm => {
                 // eprint!("\n\n{}", self.cpu_format_debug());
-                eprintln!(
+                /*eprintln!(
                     "CPU [ ARM ]: PC={:08X}, opcode={:08X}",
                     self.cpu_arm_pc(),
                     inst
-                );
+                );*/
                 self.cpu.pipeline[1] = self.cpu_load32(self.cpu.pc, self.cpu.next_fetch_access);
 
                 match self.cpu_execute_arm(inst) {

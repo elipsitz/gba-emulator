@@ -58,5 +58,5 @@ fn main() {
         window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
     }
 
-    gba.hack_run();
+    gba.emulate_frame();
 }
