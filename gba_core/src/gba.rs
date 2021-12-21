@@ -41,7 +41,7 @@ impl Gba {
 
     /// Temporary: run the CPU for a bunch of cycles.
     pub fn hack_run(&mut self) {
-        for _ in 0..1000 {
+        for _ in 0..2000 {
             self.cpu_step();
         }
     }

@@ -613,10 +613,59 @@ fn arm_exec_ld_st_halfword_byte<
     s: &mut Gba,
     inst: u32,
 ) -> InstructionResult {
-    eprintln!(
-        "ld/st hw/sb P={}, U={}, I={}, W={}, L={}, S={}, H={}",
-        PREINDEX, UP, IMMEDIATE, WRITEBACK, LOAD, SIGNED, HALFWORD
-    );
+    assert!(!(!SIGNED && !HALFWORD)); // Unsigned byte is not valid.
+    assert!(!(SIGNED && !LOAD)); // Signed store is not valid.
+    let reg_index_n = inst.bit_range(16..20) as usize;
+    let reg_index_d = inst.bit_range(12..16) as usize;
+
+    let offset = if IMMEDIATE {
+        (inst.bit_range(8..12) << 4) | inst.bit_range(0..4)
+    } else {
+        let reg_index_m = inst.bit_range(0..4) as usize;
+        s.cpu_reg_get(reg_index_m)
+    };
+
+    let base = s.cpu_reg_get(reg_index_n);
+    let computed = if UP {
+        base.wrapping_add(offset)
+    } else {
+        base.wrapping_sub(offset)
+    };
+
+    let address = if PREINDEX { computed } else { base };
+    if LOAD {
+        let data = if HALFWORD {
+            // According to ARM ARM, misaligned load is unpredictable.
+            let data = s.cpu_load16(address & !0b1, NonSequential);
+            if SIGNED {
+                let data = data as i16;
+                let data = data >> (8 * (address & 0b1));
+                data as u32
+            } else {
+                // In practice, unsigned does the rotation thing like in LDR.
+                let data = data as u32;
+                data.rotate_right(8 * (address & 0b1))
+            }
+        } else {
+            let data = s.cpu_load8(address, NonSequential);
+            data as i8 as u32 // This instruction allows signed byte only.
+        };
+        s.cpu_internal_cycle();
+        s.cpu_reg_set(reg_index_d, data);
+    } else {
+        debug_assert!(HALFWORD);
+        // According to ARM ARM, misaligned store is unpredictable.
+        // However, in practice store ignores the least significant bit of the address.
+        let data = s.cpu_reg_get(reg_index_d) as u16;
+        s.cpu_store16(address & !0b1, data, NonSequential);
+    }
+
+    if (WRITEBACK || !PREINDEX) && (!LOAD || reg_index_d != reg_index_n) {
+        s.cpu_reg_set(reg_index_n, computed);
+    }
+
+    // XXX: if reg_d is REG_PC, it's *unpredictable*.
+    s.cpu.next_fetch_access = NonSequential;
     InstructionResult::Normal
 }
 
