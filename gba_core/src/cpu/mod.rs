@@ -182,8 +182,9 @@ impl Gba {
         match self.cpu.cpsr.execution_state {
             CpuExecutionState::Thumb => {
                 let inst = inst as u16;
+                // eprint!("\n\n{}", self.cpu_format_debug());
                 eprintln!(
-                    "CPU [Thumb]: PC={:08x}, opcode={:04x}",
+                    "CPU [Thumb]: PC={:08X}, opcode={:04X}",
                     self.cpu_thumb_pc(),
                     inst
                 );
@@ -200,7 +201,7 @@ impl Gba {
                 }
             }
             CpuExecutionState::Arm => {
-                eprint!("\n\n{}", self.cpu_format_debug());
+                // eprint!("\n\n{}", self.cpu_format_debug());
                 eprintln!(
                     "CPU [ ARM ]: PC={:08X}, opcode={:08X}",
                     self.cpu_arm_pc(),
