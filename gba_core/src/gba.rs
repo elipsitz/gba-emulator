@@ -1,9 +1,12 @@
-use crate::{Cpu, Event, Rom, Scheduler};
+use crate::{Bus, Cpu, Event, Rom, Scheduler};
 
 /// Game Boy Advance Emulator
 pub struct Gba {
     /// CPU state.
     pub(crate) cpu: Cpu,
+
+    /// Memory bus state.
+    pub(crate) bus: Bus,
 
     /// Scheduler state: controls when events fire.
     pub(crate) scheduler: Scheduler,
@@ -33,6 +36,7 @@ impl Gba {
     pub fn new(bios_rom: Box<[u8]>, cart_rom: Rom) -> Gba {
         Gba {
             cpu: Cpu::new(),
+            bus: Bus::new(),
             scheduler: Scheduler::new(),
             cycles: 0,
             bios_rom,
@@ -56,7 +60,6 @@ impl Gba {
         'outer: loop {
             while self.scheduler.timestamp() < self.scheduler.peek_deadline().unwrap() {
                 self.cpu_step();
-                // TODO update scheduler timestamp.
             }
 
             // Handle any events.
