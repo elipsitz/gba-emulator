@@ -598,7 +598,29 @@ fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS
 }
 
 fn arm_exec_swap<const BYTE: bool>(s: &mut Gba, inst: u32) -> InstructionResult {
-    todo!("swap:byte={}", BYTE);
+    let reg_index_n = inst.bit_range(16..20) as usize;
+    let reg_index_d = inst.bit_range(12..16) as usize;
+    let reg_index_m = inst.bit_range(0..4) as usize;
+
+    let address = s.cpu_reg_get(reg_index_n);
+    let temp = if BYTE {
+        s.cpu_load8(address, NonSequential) as u32
+    } else {
+        let value = s.cpu_load32(address & !0b11, NonSequential);
+        value.rotate_right(8 * (address & 0b11))
+    };
+
+    let store_data = s.cpu_reg_get(reg_index_m);
+    s.cpu_store32(address & !0b11, store_data, NonSequential);
+    s.cpu_internal_cycle();
+
+    s.cpu_reg_set(reg_index_d, temp);
+
+    if reg_index_d == REG_PC {
+        InstructionResult::Branch
+    } else {
+        InstructionResult::Normal
+    }
 }
 
 fn arm_exec_ld_st_halfword_byte<
