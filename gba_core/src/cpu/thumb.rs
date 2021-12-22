@@ -286,7 +286,7 @@ fn thumb_exec_swi(s: &mut Gba, _inst: u16) -> InstructionResult {
 fn thumb_exec_branch(s: &mut Gba, inst: u16) -> InstructionResult {
     let immediate = (inst.bit_range(0..11) << 1) as u32;
     let offset = if immediate.bit(11) {
-        immediate | 0b1111_1111_1111_1111_1111
+        immediate | 0b1111_1111_1111_1111_1111_0000_0000_0000
     } else {
         immediate
     };
@@ -299,17 +299,18 @@ fn thumb_exec_branch(s: &mut Gba, inst: u16) -> InstructionResult {
 // THUMB.19: branch and link
 fn thumb_exec_branch_link<const SUFFIX: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let immediate = (inst.bit_range(0..11)) as u32;
+    dbg!(SUFFIX, immediate);
     if SUFFIX {
         // Second instruction.
         let new_pc = s.cpu_reg_get(REG_LR) + (immediate << 1);
-        let return_address = s.cpu_thumb_pc() | 1;
+        let return_address = (s.cpu_thumb_pc() + 2) | 1;
         s.cpu_reg_set(REG_PC, new_pc);
         s.cpu_reg_set(REG_LR, return_address);
         InstructionResult::Branch
     } else {
         // First instruction.
-        let signed_offset = if immediate.bit(11) {
-            immediate | 0b1111_1111_1111_1111_1111
+        let signed_offset = if immediate.bit(10) {
+            immediate | 0b1111_1111_1111_1111_1111_1000_0000_0000
         } else {
             immediate
         };
