@@ -15,6 +15,7 @@ pub struct Gba {
     pub(crate) scheduler: Scheduler,
 
     /// Memory mapped I/O state.
+    #[allow(unused)]
     pub(crate) io: Io,
 
     /// PPU state.

@@ -11,10 +11,21 @@ impl Io {
 
 impl Gba {
     pub fn io_read_16(&mut self, addr: u32) -> u16 {
-        0
+        match addr {
+            REG_DISPCNT => self.ppu.dispcnt.read(),
+            REG_DISPSTAT => self.ppu.dispstat.read(),
+            REG_VCOUNT => self.ppu.vcount as u16,
+            _ => 0,
+        }
     }
 
-    pub fn io_write_16(&mut self, addr: u32, value: u16) {}
+    pub fn io_write_16(&mut self, addr: u32, value: u16) {
+        match addr {
+            REG_DISPCNT => self.ppu.dispcnt.write(value),
+            REG_DISPSTAT => self.ppu.dispstat.write(value),
+            _ => {}
+        }
+    }
 
     pub fn io_read_32(&mut self, addr: u32) -> u32 {
         (self.io_read_16(addr) as u32) | ((self.io_read_16(addr + 2) as u32) << 16)
@@ -45,3 +56,7 @@ impl Gba {
         self.io_write_16(addr & !1, writeback);
     }
 }
+
+pub const REG_DISPCNT: u32 = 0x0400_0000;
+pub const REG_DISPSTAT: u32 = 0x0400_0004;
+pub const REG_VCOUNT: u32 = 0x0400_0006;

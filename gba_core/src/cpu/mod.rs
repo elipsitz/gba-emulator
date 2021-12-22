@@ -308,6 +308,7 @@ impl Gba {
     }
 
     /// Format a debug dump of the CPU.
+    #[allow(unused)]
     pub(crate) fn cpu_format_debug(&self) -> String {
         use std::fmt::Write;
         let mut s = String::new();
