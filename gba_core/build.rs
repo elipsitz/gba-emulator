@@ -156,10 +156,16 @@ fn decode_thumb_entry(inst: u16) -> String {
             OP = inst.bit_range(9..12)
         )
     } else if u16_matches(inst, "011 * * ***** *** ***") {
-        // THUMB.9 load/store with immediate offset
+        // THUMB.9 load/store word/byte with immediate offset
         format!(
-            "thumb_exec_ldr_str_imm::<{BYTE}, {LOAD}>",
+            "thumb_exec_ldr_str_imm::<{BYTE}, false, {LOAD}>",
             BYTE = inst.bit(12),
+            LOAD = inst.bit(11),
+        )
+    } else if u16_matches(inst, "1000 * ***** *** ***") {
+        // THUMB.10 load/store halfword with immediate offset
+        format!(
+            "thumb_exec_ldr_str_imm::<false, true, {LOAD}>",
             LOAD = inst.bit(11),
         )
     } else if u16_matches(inst, "1010 * *** ********") {

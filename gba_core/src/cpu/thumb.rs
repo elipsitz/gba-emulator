@@ -311,7 +311,8 @@ fn thumb_exec_ldr_str_reg_offset<const OP: u16>(s: &mut Gba, inst: u16) -> Instr
 }
 
 // THUMB.9 load/store with immediate offset
-fn thumb_exec_ldr_str_imm<const BYTE: bool, const LOAD: bool>(
+// THUMB.10 load/store halfword with immediate offset
+fn thumb_exec_ldr_str_imm<const BYTE: bool, const HALFWORD: bool, const LOAD: bool>(
     s: &mut Gba,
     inst: u16,
 ) -> InstructionResult {
@@ -319,23 +320,43 @@ fn thumb_exec_ldr_str_imm<const BYTE: bool, const LOAD: bool>(
     let reg_n = inst.bit_range(3..6) as usize;
     let immed = inst.bit_range(6..11) as u32;
 
-    let offset = if BYTE { immed } else { immed * 4 };
+    #[derive(Copy, Clone)]
+    enum Width {
+        Byte = 1,
+        Halfword = 2,
+        Word = 4,
+    }
+    use Width::*;
+    let width = if BYTE {
+        Byte
+    } else if HALFWORD {
+        Halfword
+    } else {
+        Word
+    };
+
+    let offset = immed * (width as u32);
     let address = s.cpu_reg_get(reg_n) + offset;
     if LOAD {
-        let value = if BYTE {
-            s.cpu_load8(address, NonSequential) as u32
-        } else {
-            let value = s.cpu_load32(address & !0b11, NonSequential);
-            value.rotate_right(8 * (address & 0b11))
+        let value = match width {
+            Byte => s.cpu_load8(address, NonSequential) as u32,
+            Halfword => {
+                let value = s.cpu_load16(address & !0b1, NonSequential) as u32;
+                value.rotate_right(8 * (address & 0b1))
+            }
+            Word => {
+                let value = s.cpu_load32(address & !0b11, NonSequential);
+                value.rotate_right(8 * (address & 0b11))
+            }
         };
         s.cpu_reg_set(reg_d, value);
         s.cpu_internal_cycle();
     } else {
         let value = s.cpu_reg_get(reg_d);
-        if BYTE {
-            s.cpu_store8(address, value as u8, NonSequential);
-        } else {
-            s.cpu_store32(address & !0b11, value, NonSequential);
+        match width {
+            Byte => s.cpu_store8(address, value as u8, NonSequential),
+            Halfword => s.cpu_store16(address & !0b1, value as u16, NonSequential),
+            Word => s.cpu_store32(address & !0b11, value, NonSequential),
         }
     }
 
