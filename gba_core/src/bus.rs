@@ -162,6 +162,9 @@ impl Gba {
                 }
             }
             REGION_IO => self.io_read_32(addr),
+            REGION_VRAM => self.ppu.vram.read_32(addr & 0x1FFFF), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.read_32(addr & 0x3FF),
+            REGION_OAM => self.ppu.oam.read_32(addr & 0x3FF),
             _ => {
                 eprintln!("Bad memory load (32 bit) at {:X}", addr);
                 0
@@ -189,6 +192,9 @@ impl Gba {
                 }
             }
             REGION_IO => self.io_read_16(addr),
+            REGION_VRAM => self.ppu.vram.read_16(addr & 0x1FFFF), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.read_16(addr & 0x3FF),
+            REGION_OAM => self.ppu.oam.read_16(addr & 0x3FF),
             _ => {
                 eprintln!("Bad memory load (16 bit) at {:X}", addr);
                 0
@@ -216,6 +222,9 @@ impl Gba {
                 }
             }
             REGION_IO => self.io_read_8(addr),
+            REGION_VRAM => self.ppu.vram.read_8(addr & 0x1FFFF), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.read_8(addr & 0x3FF),
+            REGION_OAM => self.ppu.oam.read_8(addr & 0x3FF),
             _ => {
                 eprintln!("Bad memory load (8 bit) at {:X}", addr);
                 0
@@ -233,6 +242,9 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_32(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_32(addr & 0x7FFF, data),
             REGION_IO => self.io_write_32(addr, data),
+            REGION_VRAM => self.ppu.vram.write_32(addr & 0x1FFFF, data), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.write_32(addr & 0x3FF, data),
+            REGION_OAM => self.ppu.oam.write_32(addr & 0x3FF, data),
             _ => {
                 eprintln!("Bad memory store (32 bit) at {:X}, data {:X}", addr, data);
             }
@@ -249,6 +261,9 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_16(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_16(addr & 0x7FFF, data),
             REGION_IO => self.io_write_16(addr, data),
+            REGION_VRAM => self.ppu.vram.write_16(addr & 0x1FFFF, data), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.write_16(addr & 0x3FF, data),
+            REGION_OAM => self.ppu.oam.write_16(addr & 0x3FF, data),
             _ => {
                 eprintln!("Bad memory store (16 bit) at {:X}, data {:X}", addr, data);
             }
@@ -265,6 +280,9 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_8(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_8(addr & 0x7FFF, data),
             REGION_IO => self.io_write_8(addr, data),
+            REGION_VRAM => self.ppu.vram.write_8(addr & 0x1FFFF, data), // TODO wrap better?
+            REGION_PALETTE => self.ppu.palette.write_8(addr & 0x3FF, data),
+            REGION_OAM => self.ppu.oam.write_8(addr & 0x3FF, data),
             _ => {
                 eprintln!("Bad memory store (8 bit) at {:X}, data {:X}", addr, data);
             }
