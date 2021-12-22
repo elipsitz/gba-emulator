@@ -245,6 +245,21 @@ fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> Instructio
     InstructionResult::Normal
 }
 
+// THUMB.13: add offset to stack pointer
+fn thumb_exec_adjust_sp<const SUB: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let immed = inst.bit_range(0..7) as u32;
+    let offset = immed * 4;
+
+    let sp = s.cpu_reg_get(REG_SP);
+    let new_sp = if SUB {
+        sp.wrapping_sub(offset)
+    } else {
+        sp.wrapping_add(offset)
+    };
+    s.cpu_reg_set(REG_SP, new_sp);
+    InstructionResult::Normal
+}
+
 // THUMB.16: conditional branch
 fn thumb_exec_branch_conditional<const COND: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
     let condition: Condition = (COND as u32).into();

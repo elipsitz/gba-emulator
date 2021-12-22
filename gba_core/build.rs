@@ -148,6 +148,9 @@ fn decode_thumb_entry(inst: u16) -> String {
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)
+    } else if u16_matches(inst, "10110000 * *******") {
+        // THUMB.13: add offset to stack pointer
+        format!("thumb_exec_adjust_sp::<{SUB}>", SUB = inst.bit(7))
     } else if u16_matches(inst, "1101 **** ********") {
         let middle = inst.bit_range(8..12);
         match middle {
