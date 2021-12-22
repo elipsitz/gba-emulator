@@ -143,12 +143,6 @@ impl Gba {
 
     /// Read a 32 bit value from the bus.
     pub fn cpu_load32(&mut self, addr: Addr, access: MemoryAccessType) -> u32 {
-        // TODO: remove gbatest failure detection
-        if addr == 0x0400_0004 {
-            eprintln!("{}", self.cpu_format_debug());
-            panic!("cputest failed! see r12");
-        }
-
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem32, access);
 
@@ -236,7 +230,7 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_32(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_32(addr & 0x7FFF, data),
             _ => {
-                eprintln!("Bad memory store (32 bit) at {:X}", addr);
+                eprintln!("Bad memory store (32 bit) at {:X}, data {:X}", addr, data);
             }
         }
     }
@@ -251,7 +245,7 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_16(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_16(addr & 0x7FFF, data),
             _ => {
-                eprintln!("Bad memory store (32 bit) at {:X}", addr);
+                eprintln!("Bad memory store (16 bit) at {:X}, data {:X}", addr, data);
             }
         }
     }
@@ -266,7 +260,7 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_8(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_8(addr & 0x7FFF, data),
             _ => {
-                eprintln!("Bad memory store (32 bit) at {:X}", addr);
+                eprintln!("Bad memory store (8 bit) at {:X}, data {:X}", addr, data);
             }
         }
     }

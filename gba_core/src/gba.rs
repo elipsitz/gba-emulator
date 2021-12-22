@@ -78,7 +78,7 @@ impl Gba {
 
     /// Emulate a frame.
     pub fn emulate_frame(&mut self) {
-        let frame_cycles = (240 + 68) * (160 * 68) * 4;
+        let frame_cycles = (240 + 68) * (160 + 68) * 4;
         let run_cycles = frame_cycles - self.last_frame_overshoot;
         let actually_ran = self.run(run_cycles);
         self.last_frame_overshoot = actually_ran - run_cycles;
