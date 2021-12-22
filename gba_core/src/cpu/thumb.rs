@@ -364,6 +364,26 @@ fn thumb_exec_ldr_str_imm<const BYTE: bool, const HALFWORD: bool, const LOAD: bo
     InstructionResult::Normal
 }
 
+// THUMB.11 load/store SP relative
+fn thumb_exec_ldr_str_sp<const LOAD: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let immed = inst.bit_range(0..8) as u32;
+    let reg_d = inst.bit_range(8..11) as usize;
+
+    let address = s.cpu_reg_get(REG_SP).wrapping_add(immed * 4);
+    if LOAD {
+        let value = s.cpu_load32(address & !0b11, NonSequential);
+        let value = value.rotate_right(8 * (address & 0b11));
+        s.cpu_reg_set(reg_d, value);
+        s.cpu_internal_cycle();
+    } else {
+        let value = s.cpu_reg_get(reg_d);
+        s.cpu_store32(address & !0b11, value, NonSequential);
+    }
+
+    s.cpu.next_fetch_access = NonSequential;
+    InstructionResult::Normal
+}
+
 // THUMB.12: get relative address
 fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let reg_d = inst.bit_range(8..11) as usize;

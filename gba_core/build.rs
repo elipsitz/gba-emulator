@@ -168,6 +168,9 @@ fn decode_thumb_entry(inst: u16) -> String {
             "thumb_exec_ldr_str_imm::<false, true, {LOAD}>",
             LOAD = inst.bit(11),
         )
+    } else if u16_matches(inst, "1001 * *** ********") {
+        // THUMB.11 load/store SP relative
+        format!("thumb_exec_ldr_str_sp::<{LOAD}>", LOAD = inst.bit(11))
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)
