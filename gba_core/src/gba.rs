@@ -1,4 +1,4 @@
-use crate::{Bus, Cpu, Event, Ppu, Rom, Scheduler};
+use crate::{Bus, Cpu, Event, Io, Ppu, Rom, Scheduler};
 
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
@@ -13,6 +13,9 @@ pub struct Gba {
 
     /// Scheduler state: controls when events fire.
     pub(crate) scheduler: Scheduler,
+
+    /// Memory mapped I/O state.
+    pub(crate) io: Io,
 
     /// PPU state.
     pub(crate) ppu: Ppu,
@@ -40,6 +43,7 @@ impl Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),
             scheduler: Scheduler::new(),
+            io: Io::new(),
             ppu: Ppu::new(),
             bios_rom,
             cart_rom,

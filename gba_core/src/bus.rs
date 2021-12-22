@@ -161,6 +161,7 @@ impl Gba {
                     0
                 }
             }
+            REGION_IO => self.io_read_32(addr),
             _ => {
                 eprintln!("Bad memory load (32 bit) at {:X}", addr);
                 0
@@ -187,6 +188,7 @@ impl Gba {
                     0
                 }
             }
+            REGION_IO => self.io_read_16(addr),
             _ => {
                 eprintln!("Bad memory load (16 bit) at {:X}", addr);
                 0
@@ -213,6 +215,7 @@ impl Gba {
                     0
                 }
             }
+            REGION_IO => self.io_read_8(addr),
             _ => {
                 eprintln!("Bad memory load (8 bit) at {:X}", addr);
                 0
@@ -229,6 +232,7 @@ impl Gba {
             REGION_BIOS => {}
             REGION_EWRAM => self.ewram.write_32(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_32(addr & 0x7FFF, data),
+            REGION_IO => self.io_write_32(addr, data),
             _ => {
                 eprintln!("Bad memory store (32 bit) at {:X}, data {:X}", addr, data);
             }
@@ -244,6 +248,7 @@ impl Gba {
             REGION_BIOS => {}
             REGION_EWRAM => self.ewram.write_16(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_16(addr & 0x7FFF, data),
+            REGION_IO => self.io_write_16(addr, data),
             _ => {
                 eprintln!("Bad memory store (16 bit) at {:X}, data {:X}", addr, data);
             }
@@ -259,6 +264,7 @@ impl Gba {
             REGION_BIOS => {}
             REGION_EWRAM => self.ewram.write_8(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_8(addr & 0x7FFF, data),
+            REGION_IO => self.io_write_8(addr, data),
             _ => {
                 eprintln!("Bad memory store (8 bit) at {:X}, data {:X}", addr, data);
             }
