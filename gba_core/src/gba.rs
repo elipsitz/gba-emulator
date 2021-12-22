@@ -1,4 +1,7 @@
-use crate::{Bus, Cpu, Event, Rom, Scheduler};
+use crate::{Bus, Cpu, Event, Ppu, Rom, Scheduler};
+
+pub const WIDTH: usize = 240;
+pub const HEIGHT: usize = 160;
 
 /// Game Boy Advance Emulator
 pub struct Gba {
@@ -11,9 +14,8 @@ pub struct Gba {
     /// Scheduler state: controls when events fire.
     pub(crate) scheduler: Scheduler,
 
-    /// CPU cycle counter.
-    #[allow(unused)]
-    pub(crate) cycles: usize,
+    /// PPU state.
+    pub(crate) ppu: Ppu,
 
     /// The 16 KiB BIOS ROM.
     pub(crate) bios_rom: Box<[u8]>,
@@ -38,7 +40,7 @@ impl Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),
             scheduler: Scheduler::new(),
-            cycles: 0,
+            ppu: Ppu::new(),
             bios_rom,
             cart_rom,
             ewram: [0; 256 * 1024],
@@ -80,5 +82,11 @@ impl Gba {
         let run_cycles = frame_cycles - self.last_frame_overshoot;
         let actually_ran = self.run(run_cycles);
         self.last_frame_overshoot = actually_ran - run_cycles;
+    }
+
+    /// Get the frame buffer.
+    /// (240 * 160) pixels, each pixel in ARGB format, row major.
+    pub fn framebuffer(&self) -> &[u32] {
+        &self.ppu.framebuffer
     }
 }

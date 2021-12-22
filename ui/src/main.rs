@@ -30,7 +30,6 @@ fn main() {
     let mut gba = make_gba();
 
     // Create the window.
-    let mut buffer: Vec<u32> = vec![0; WIDTH * HEIGHT];
     let window_options = WindowOptions {
         scale: minifb::Scale::X2,
         scale_mode: minifb::ScaleMode::Stretch,
@@ -49,14 +48,13 @@ fn main() {
 
         // TODO: get input.
 
-        // TODO: run emulator for a frame.
+        // Run emulator for a frame.
+        gba.emulate_frame();
 
-        // TODO: update buffer with data from emulator.
-        for i in buffer.iter_mut() {
-            *i = 0x00FF7733; // write something more funny here!
-        }
-        window.update_with_buffer(&buffer, WIDTH, HEIGHT).unwrap();
+        // Update window with the framebuffer.
+        let framebuffer = gba.framebuffer();
+        window
+            .update_with_buffer(framebuffer, WIDTH, HEIGHT)
+            .unwrap();
     }
-
-    gba.emulate_frame();
 }
