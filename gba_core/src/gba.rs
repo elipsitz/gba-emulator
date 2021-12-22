@@ -40,7 +40,7 @@ pub struct Gba {
 impl Gba {
     /// Create a new GBA emulator from the given BIOS and cartridge.
     pub fn new(bios_rom: Box<[u8]>, cart_rom: Rom) -> Gba {
-        Gba {
+        let mut gba = Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),
             scheduler: Scheduler::new(),
@@ -51,7 +51,9 @@ impl Gba {
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
             last_frame_overshoot: 0,
-        }
+        };
+        gba.ppu_init();
+        gba
     }
 
     pub fn skip_bios(&mut self) {
@@ -70,9 +72,10 @@ impl Gba {
             }
 
             // Handle any events.
-            while let Some((event, _lateness)) = self.scheduler.pop_event() {
+            while let Some((event, lateness)) = self.scheduler.pop_event() {
                 match event {
                     Event::StopRunning => break 'outer,
+                    Event::Ppu(ppu) => self.ppu_on_event(ppu, lateness),
                 }
             }
         }

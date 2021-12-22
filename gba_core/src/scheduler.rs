@@ -9,10 +9,19 @@ pub struct Scheduler {
     queue: BinaryHeap<ScheduledEvent>,
 }
 
-#[derive(Debug)]
+#[derive(Copy, Clone, Debug)]
 pub enum Event {
     /// Stop running the emulator.
     StopRunning,
+
+    /// A PPU Event.
+    Ppu(PpuEvent),
+}
+
+#[derive(Copy, Clone, Debug)]
+pub enum PpuEvent {
+    /// End of scanline.
+    EndScanline,
 }
 
 impl Scheduler {
