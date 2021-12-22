@@ -145,6 +145,9 @@ fn decode_thumb_entry(inst: u16) -> String {
                 MSB_REG_S = inst.bit(6),
             )
         }
+    } else if u16_matches(inst, "01001 *** ********") {
+        // THUMB.6: load PC-relative
+        "thumb_exec_load_pc_relative".to_string()
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)

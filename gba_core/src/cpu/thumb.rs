@@ -2,7 +2,9 @@ use super::{
     alu::{self, ThumbAluOpcode},
     cond::Condition,
     exception::ExceptionType,
-    CpuExecutionState, Gba, InstructionResult, REG_LR, REG_PC, REG_SP,
+    CpuExecutionState, Gba, InstructionResult,
+    MemoryAccessType::*,
+    REG_LR, REG_PC, REG_SP,
 };
 use bit::BitIndex;
 
@@ -230,6 +232,20 @@ fn thumb_exec_hireg<const OPCODE: u16, const MSB_REG_D: bool, const MSB_REG_S: b
     }
 }
 
+// THUMB.6: load PC-relative
+fn thumb_exec_load_pc_relative(s: &mut Gba, inst: u16) -> InstructionResult {
+    let immed = inst.bit_range(0..8) as u32;
+    let reg_d = inst.bit_range(8..11) as usize;
+
+    let address = (s.cpu.pc & !3).wrapping_add(immed * 4);
+    let value = s.cpu_load32(address, NonSequential);
+    s.cpu_reg_set(reg_d, value);
+
+    s.cpu_internal_cycle();
+    s.cpu.next_fetch_access = NonSequential;
+    InstructionResult::Normal
+}
+
 // THUMB.12: get relative address
 fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let reg_d = inst.bit_range(8..11) as usize;
@@ -299,7 +315,6 @@ fn thumb_exec_branch(s: &mut Gba, inst: u16) -> InstructionResult {
 // THUMB.19: branch and link
 fn thumb_exec_branch_link<const SUFFIX: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let immediate = (inst.bit_range(0..11)) as u32;
-    dbg!(SUFFIX, immediate);
     if SUFFIX {
         // Second instruction.
         let new_pc = s.cpu_reg_get(REG_LR) + (immediate << 1);
