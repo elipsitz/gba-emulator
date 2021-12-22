@@ -61,6 +61,57 @@ impl AluOpcode {
     }
 }
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum ThumbAluOpcode {
+    AND = 0x0, // logical and
+    EOR = 0x1, // logical or
+    LSL = 0x2, // logical shift left
+    LSR = 0x3, // logical shift right
+    ASR = 0x4, // arithmetic shift right
+    ADC = 0x5, // add with carry
+    SBC = 0x6, // subtract with carry
+    ROR = 0x7, // rotate right
+    TST = 0x8, // test
+    NEG = 0x9, // negate
+    CMP = 0xA, // compare
+    CMN = 0xB, // compare negative
+    ORR = 0xC, // logical OR
+    MUL = 0xD, // multiply
+    BIC = 0xE, // bit clear
+    MVN = 0xF, // move not
+}
+
+impl ThumbAluOpcode {
+    pub const fn from_u16(value: u16) -> ThumbAluOpcode {
+        use ThumbAluOpcode::*;
+        match value & 0xF {
+            0x0 => AND,
+            0x1 => EOR,
+            0x2 => LSL,
+            0x3 => LSR,
+            0x4 => ASR,
+            0x5 => ADC,
+            0x6 => SBC,
+            0x7 => ROR,
+            0x8 => TST,
+            0x9 => NEG,
+            0xA => CMP,
+            0xB => CMN,
+            0xC => ORR,
+            0xD => MUL,
+            0xE => BIC,
+            0xF => MVN,
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+
+    /// Whether this opcode tests and sets flags but doesn't set a register.
+    pub const fn is_test(self) -> bool {
+        use ThumbAluOpcode::*;
+        matches!(self, TST | CMP | CMN)
+    }
+}
+
 /// Does the ALU "add" operation, returning (result, carry, overflow).
 pub fn calc_add(op1: u32, op2: u32) -> (u32, bool, bool) {
     let result = op1.wrapping_add(op2);
@@ -173,6 +224,73 @@ pub fn shift_by_immediate(
             if shift_amount == 0 {
                 // RRX: rotate right with extend (5.1.13)
                 (((carry_in as u32) << 31) | (operand >> 1), operand.bit(0))
+            } else {
+                (
+                    operand.rotate_right(shift_amount as u32),
+                    operand.bit(shift_amount - 1),
+                )
+            }
+        }
+    }
+}
+
+/// Shift a 32-bit operand by a value loaded from a register.
+/// Outputs the result and the carry.
+pub fn shift_by_register(
+    shift: AluShiftType,
+    operand: u32,
+    shift_amount: u32,
+    carry_in: bool,
+) -> (u32, bool) {
+    let shift_amount = shift_amount as usize;
+    use AluShiftType::*;
+    match shift {
+        LSL => {
+            // ARM ARM 5.1.6
+            if shift_amount == 0 {
+                (operand, carry_in)
+            } else if shift_amount < 32 {
+                (operand << shift_amount, operand.bit(32 - shift_amount))
+            } else if shift_amount == 32 {
+                (0, operand.bit(0))
+            } else {
+                (0, false)
+            }
+        }
+        LSR => {
+            // ARM ARM 5.1.8
+            if shift_amount == 0 {
+                (operand, carry_in)
+            } else if shift_amount < 32 {
+                (operand >> shift_amount, operand.bit(shift_amount - 1))
+            } else if operand == 32 {
+                (0, operand.bit(31))
+            } else {
+                (0, false)
+            }
+        }
+        ASR => {
+            // ARM ARM 5.1.10
+            if shift_amount == 0 {
+                (operand, carry_in)
+            } else if shift_amount < 32 {
+                (
+                    ((operand as i32) >> shift_amount) as u32,
+                    operand.bit(shift_amount - 1),
+                )
+            } else if !operand.bit(31) {
+                (0, operand.bit(31))
+            } else {
+                (0xFFFFFFFF, operand.bit(31))
+            }
+        }
+        ROR => {
+            // ARM ARM 5.1.12
+            let shift_amount = shift_amount & 0xF;
+            if shift_amount == 0 {
+                (operand, carry_in)
+            } else if shift_amount == 0 {
+                (operand, operand.bit(31))
             } else {
                 (
                     operand.rotate_right(shift_amount as u32),

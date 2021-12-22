@@ -1,6 +1,8 @@
 use super::{
-    alu, cond::Condition, exception::ExceptionType, CpuExecutionState, Gba, InstructionResult,
-    REG_PC, REG_SP,
+    alu::{self, ThumbAluOpcode},
+    cond::Condition,
+    exception::ExceptionType,
+    CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP,
 };
 use bit::BitIndex;
 
@@ -117,6 +119,72 @@ fn thumb_exec_bx<const MSB_REG_S: bool>(s: &mut Gba, inst: u16) -> InstructionRe
     s.cpu.cpsr.execution_state = if thumb { Thumb } else { Arm };
     s.cpu_jump(address);
     InstructionResult::Branch
+}
+
+// THUMB.5: data-processing register
+fn thumb_exec_alu_register<const OPCODE: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let reg_d = inst.bit_range(0..3) as usize;
+    let reg_m = inst.bit_range(3..6) as usize;
+    let opcode = ThumbAluOpcode::from_u16(OPCODE);
+
+    let op1 = s.cpu_reg_get(reg_d);
+    let op2 = s.cpu_reg_get(reg_m);
+
+    let carry_in = s.cpu.cpsr.cond_flag_c;
+    let overflow_in = s.cpu.cpsr.cond_flag_v;
+    use alu::AluShiftType;
+    use ThumbAluOpcode::*;
+    let (result, carry, overflow) = match opcode {
+        AND | TST => (op1 & op2, carry_in, overflow_in),
+        EOR => (op1 ^ op2, carry_in, overflow_in),
+        //orr, bic, mvn
+        LSL => {
+            s.cpu_internal_cycle();
+            let (result, carry) = alu::shift_by_register(AluShiftType::LSL, op1, op2, carry_in);
+            (result, carry, overflow_in)
+        }
+        LSR => {
+            s.cpu_internal_cycle();
+            let (result, carry) = alu::shift_by_register(AluShiftType::LSR, op1, op2, carry_in);
+            (result, carry, overflow_in)
+        }
+        ASR => {
+            s.cpu_internal_cycle();
+            let (result, carry) = alu::shift_by_register(AluShiftType::ASR, op1, op2, carry_in);
+            (result, carry, overflow_in)
+        }
+        ADC => alu::calc_adc(op1, op2, carry_in),
+        SBC => alu::calc_sbc(op1, op2, carry_in),
+        ROR => {
+            s.cpu_internal_cycle();
+            let (result, carry) = alu::shift_by_register(AluShiftType::ROR, op1, op2, carry_in);
+            (result, carry, overflow_in)
+        }
+        NEG => alu::calc_sub(0, op2),
+        CMP => alu::calc_sub(op1, op2),
+        CMN => alu::calc_add(op1, op2),
+        ORR => (op1 | op2, carry_in, overflow_in),
+        MUL => {
+            let num_internal_cycles = alu::multiply_internal_cycles(op2);
+            for _ in 0..num_internal_cycles {
+                s.cpu_internal_cycle();
+            }
+            (op1.wrapping_mul(op2), carry_in, overflow_in)
+        }
+        BIC => (op1 & (!op2), carry_in, overflow_in),
+        MVN => (!op2, carry_in, overflow_in),
+    };
+
+    // Write flags and set output register.
+    s.cpu.cpsr.cond_flag_z = result == 0;
+    s.cpu.cpsr.cond_flag_n = result.bit(31);
+    s.cpu.cpsr.cond_flag_c = carry;
+    s.cpu.cpsr.cond_flag_v = overflow;
+    if !opcode.is_test() {
+        s.cpu_reg_set(reg_d, result);
+    }
+
+    InstructionResult::Normal
 }
 
 // THUMB.5: Hi register operations

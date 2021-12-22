@@ -126,6 +126,12 @@ fn decode_thumb_entry(inst: u16) -> String {
             OPCODE = inst.bit_range(11..13),
             REG_D = inst.bit_range(8..11),
         )
+    } else if u16_matches(inst, "010000 **** *** ***") {
+        // THUMB.4: data-processing register
+        format!(
+            "thumb_exec_alu_register::<{OPCODE}>",
+            OPCODE = inst.bit_range(6..10)
+        )
     } else if u16_matches(inst, "010001 ** * * *** ***") {
         // THUMB.5: Hi register operations/branch exchange.
         let opcode = inst.bit_range(8..10);

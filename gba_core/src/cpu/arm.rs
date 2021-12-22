@@ -116,63 +116,11 @@ fn arm_exec_alu<
             // Takes an extra internal cycle.
             s.cpu_internal_cycle();
             let reg_s = inst.bit_range(8..12) as usize;
-            let reg_s = (s.cpu_reg_get(reg_s) & 0xFF) as usize;
+            let reg_s = s.cpu_reg_get(reg_s) & 0xFF;
             if reg_idx_m == REG_PC {
                 reg_m += 4; // Some prefetching behavior.
             }
-            use alu::AluShiftType::*;
-            match shift_type {
-                LSL => {
-                    // ARM ARM 5.1.6
-                    if reg_s == 0 {
-                        (reg_m, carry_flag)
-                    } else if reg_s < 32 {
-                        (reg_m << reg_s, reg_m.bit(32 - reg_s))
-                    } else if reg_s == 32 {
-                        (0, reg_m.bit(0))
-                    } else {
-                        (0, false)
-                    }
-                }
-                LSR => {
-                    // ARM ARM 5.1.8
-                    if reg_s == 0 {
-                        (reg_m, carry_flag)
-                    } else if reg_s < 32 {
-                        (reg_m >> reg_s, reg_m.bit(reg_s - 1))
-                    } else if reg_m == 32 {
-                        (0, reg_m.bit(31))
-                    } else {
-                        (0, false)
-                    }
-                }
-                ASR => {
-                    // ARM ARM 5.1.10
-                    if reg_s == 0 {
-                        (reg_m, carry_flag)
-                    } else if reg_s < 32 {
-                        (((reg_m as i32) >> reg_s) as u32, reg_m.bit(reg_s - 1))
-                    } else if !reg_m.bit(31) {
-                        (0, reg_m.bit(31))
-                    } else {
-                        (0xFFFFFFFF, reg_m.bit(31))
-                    }
-                }
-                ROR => {
-                    // ARM ARM 5.1.12
-                    let shift_amount = reg_s & 0xF;
-                    if reg_s == 0 {
-                        (reg_m, carry_flag)
-                    } else if shift_amount == 0 {
-                        (reg_m, reg_m.bit(31))
-                    } else {
-                        (
-                            reg_m.rotate_right(shift_amount as u32),
-                            reg_m.bit(shift_amount - 1),
-                        )
-                    }
-                }
-            }
+            alu::shift_by_register(shift_type, reg_m, reg_s, carry_flag)
         } else {
             // op2 is a value in a register, shifted by an immediate value.
             let shift_imm = inst.bit_range(7..12) as usize;
