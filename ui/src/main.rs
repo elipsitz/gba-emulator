@@ -34,6 +34,7 @@ fn main() {
     let window_options = WindowOptions {
         scale: minifb::Scale::X2,
         scale_mode: minifb::ScaleMode::Stretch,
+        topmost: true,
         ..WindowOptions::default()
     };
     let mut window =
