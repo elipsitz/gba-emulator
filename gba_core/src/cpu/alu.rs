@@ -263,7 +263,7 @@ pub fn shift_by_register(
                 (operand, carry_in)
             } else if shift_amount < 32 {
                 (operand >> shift_amount, operand.bit(shift_amount - 1))
-            } else if operand == 32 {
+            } else if shift_amount == 32 {
                 (0, operand.bit(31))
             } else {
                 (0, false)
@@ -286,15 +286,15 @@ pub fn shift_by_register(
         }
         ROR => {
             // ARM ARM 5.1.12
-            let shift_amount = shift_amount & 0xF;
+            let new_amount = shift_amount & 0xF;
             if shift_amount == 0 {
                 (operand, carry_in)
-            } else if shift_amount == 0 {
+            } else if new_amount == 0 {
                 (operand, operand.bit(31))
             } else {
                 (
-                    operand.rotate_right(shift_amount as u32),
-                    operand.bit(shift_amount - 1),
+                    operand.rotate_right(new_amount as u32),
+                    operand.bit(new_amount - 1),
                 )
             }
         }
