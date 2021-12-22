@@ -139,6 +139,8 @@ fn decode_thumb_entry(inst: u16) -> String {
             // THUMB.16: conditional branch
             _ => format!("thumb_exec_branch_conditional::<{COND}>", COND = middle),
         }
+    } else if u16_matches(inst, "11100 ***********") {
+        "thumb_exec_branch".to_string()
     } else {
         "thumb_unimplemented".to_string()
     }

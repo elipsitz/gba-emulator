@@ -152,6 +152,20 @@ fn thumb_exec_swi(s: &mut Gba, _inst: u16) -> InstructionResult {
     InstructionResult::Branch
 }
 
+// THUMB.18: unconditional branch
+fn thumb_exec_branch(s: &mut Gba, inst: u16) -> InstructionResult {
+    let immediate = (inst.bit_range(0..11) << 1) as u32;
+    let offset = if immediate.bit(11) {
+        immediate | 0b1111_1111_1111_1111_1111
+    } else {
+        immediate
+    };
+    let pc = s.cpu_reg_get(REG_PC);
+    let new_pc = pc.wrapping_add(offset);
+    s.cpu_reg_set(REG_PC, new_pc);
+    InstructionResult::Branch
+}
+
 // Include look-up table for instruction handlers.
 include!(concat!(env!("OUT_DIR"), "/thumb_table.rs"));
 
