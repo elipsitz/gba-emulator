@@ -1,5 +1,6 @@
 use super::{
-    alu, exception::ExceptionType, CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP,
+    alu, cond::Condition, exception::ExceptionType, CpuExecutionState, Gba, InstructionResult,
+    REG_PC, REG_SP,
 };
 use bit::BitIndex;
 
@@ -131,7 +132,17 @@ fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> Instructio
 
 // THUMB.16: conditional branch
 fn thumb_exec_branch_conditional<const COND: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
-    todo!();
+    let condition: Condition = (COND as u32).into();
+    if condition.evaluate(s) {
+        let immed = inst.bit_range(0..8);
+        let offset = (immed as i8 as u32) << 1;
+        let pc = s.cpu_reg_get(REG_PC);
+        let new_pc = pc.wrapping_add(offset);
+        s.cpu_reg_set(REG_PC, new_pc);
+        InstructionResult::Branch
+    } else {
+        InstructionResult::Normal
+    }
 }
 
 // THUMB.17: software interrupt
