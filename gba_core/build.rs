@@ -155,6 +155,13 @@ fn decode_thumb_entry(inst: u16) -> String {
             "thumb_exec_ldr_str_reg_offset::<{OP}>",
             OP = inst.bit_range(9..12)
         )
+    } else if u16_matches(inst, "011 * * ***** *** ***") {
+        // THUMB.9 load/store with immediate offset
+        format!(
+            "thumb_exec_ldr_str_imm::<{BYTE}, {LOAD}>",
+            BYTE = inst.bit(12),
+            LOAD = inst.bit(11),
+        )
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)
