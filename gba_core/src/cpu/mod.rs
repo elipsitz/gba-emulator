@@ -304,7 +304,7 @@ impl Gba {
 
     /// Do a CPU internal cycle.
     fn cpu_internal_cycle(&mut self) {
-        // TODO implement this
+        self.scheduler.update(1);
     }
 
     /// Format a debug dump of the CPU.
