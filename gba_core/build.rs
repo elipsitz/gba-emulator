@@ -106,7 +106,20 @@ fn decode_arm_entry(inst: u32) -> String {
 
 /// Return the Thumb handler for the given instruction base.
 fn decode_thumb_entry(inst: u16) -> String {
-    if u16_matches(inst, "001 ** *** ********") {
+    if u16_matches(inst, "000 ** ***** *** ***") {
+        let opcode = inst.bit_range(11..13);
+        if opcode != 0b11 {
+            // THUMB.1: shift by immediate
+            format!("thumb_exec_shift_imm::<{OPCODE}>", OPCODE = opcode)
+        } else {
+            // THUMB.2: add / subtract
+            format!(
+                "thumb_exec_add_sub::<{IMM}, {SUB}>",
+                IMM = inst.bit(10),
+                SUB = inst.bit(9),
+            )
+        }
+    } else if u16_matches(inst, "001 ** *** ********") {
         // THUMB.3: move/compare/add/subtract immediate
         format!(
             "thumb_exec_alu_immediate::<{OPCODE}, {REG_D}>",

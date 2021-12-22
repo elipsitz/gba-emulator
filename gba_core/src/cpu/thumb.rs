@@ -20,6 +20,32 @@ fn thumb_unimplemented(_s: &mut Gba, inst: u16) -> InstructionResult {
     );
 }
 
+// THUMB.1: shift by immediate
+fn thumb_exec_shift_imm<const OPCODE: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let reg_d = inst.bit_range(0..3) as usize;
+    let reg_m = inst.bit_range(3..6) as usize;
+    let immediate = inst.bit_range(6..11) as usize; // 5 bit immediate
+
+    let shift_type = alu::AluShiftType::from_u32(OPCODE as u32);
+    let operand = s.cpu_reg_get(reg_m);
+    let (result, shift_carry) =
+        alu::shift_by_immediate(shift_type, operand, immediate, s.cpu.cpsr.cond_flag_c);
+
+    s.cpu_reg_set(reg_d, result);
+    s.cpu.cpsr.cond_flag_c = shift_carry;
+    s.cpu.cpsr.cond_flag_z = result == 0;
+    s.cpu.cpsr.cond_flag_n = result.bit(31);
+    InstructionResult::Normal
+}
+
+// THUMB.2: add / subtract
+fn thumb_exec_add_sub<const IMM: bool, const SUB: bool>(
+    s: &mut Gba,
+    inst: u16,
+) -> InstructionResult {
+    todo!();
+}
+
 /// THUMB.3: move/compare/add/subtract immediate.
 fn thumb_exec_alu_immediate<const OPCODE: u16, const REG_D: u16>(
     s: &mut Gba,

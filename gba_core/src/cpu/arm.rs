@@ -176,53 +176,7 @@ fn arm_exec_alu<
         } else {
             // op2 is a value in a register, shifted by an immediate value.
             let shift_imm = inst.bit_range(7..12) as usize;
-            use alu::AluShiftType::*;
-            match shift_type {
-                LSL => {
-                    // ARM ARM 5.1.5
-                    if shift_imm == 0 {
-                        (reg_m, carry_flag)
-                    } else {
-                        (reg_m << shift_imm, reg_m.bit(32 - shift_imm))
-                    }
-                }
-                LSR => {
-                    // ARM ARM 5.1.7
-                    if shift_imm == 0 {
-                        // Treated as shift_imm = 32
-                        (0, reg_m.bit(31))
-                    } else {
-                        (reg_m >> shift_imm, reg_m.bit(shift_imm - 1))
-                    }
-                }
-                ASR => {
-                    // ARM ARM 5.1.9
-                    if shift_imm == 0 {
-                        if !reg_m.bit(31) {
-                            (0, reg_m.bit(31))
-                        } else {
-                            (0xFFFFFFFF, reg_m.bit(31))
-                        }
-                    } else {
-                        (
-                            ((reg_m as i32) >> shift_imm) as u32,
-                            reg_m.bit(shift_imm - 1),
-                        )
-                    }
-                }
-                ROR => {
-                    // ARM ARM 5.1.11, 5.1.13
-                    if shift_imm == 0 {
-                        // RRX: rotate right with extend (5.1.13)
-                        (((carry_flag as u32) << 31) | (reg_m >> 1), reg_m.bit(0))
-                    } else {
-                        (
-                            reg_m.rotate_right(shift_imm as u32),
-                            reg_m.bit(shift_imm - 1),
-                        )
-                    }
-                }
-            }
+            alu::shift_by_immediate(shift_type, reg_m, shift_imm, carry_flag)
         }
     };
 

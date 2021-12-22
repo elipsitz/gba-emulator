@@ -125,3 +125,60 @@ pub fn multiply_internal_cycles(operand: u32) -> u32 {
     let leading_same = u32::max(operand.leading_ones(), operand.leading_zeros());
     4 - (leading_same / 8)
 }
+
+/// Shift a 32-bit operand by an 11 bit immediate.
+/// Outputs the value and the carry.
+pub fn shift_by_immediate(
+    shift: AluShiftType,
+    operand: u32,
+    shift_amount: usize,
+    carry_in: bool,
+) -> (u32, bool) {
+    use AluShiftType::*;
+    match shift {
+        LSL => {
+            // ARM ARM 5.1.5
+            if shift_amount == 0 {
+                (operand, carry_in)
+            } else {
+                (operand << shift_amount, operand.bit(32 - shift_amount))
+            }
+        }
+        LSR => {
+            // ARM ARM 5.1.7
+            if shift_amount == 0 {
+                // Treated as shift_amount = 32
+                (0, operand.bit(31))
+            } else {
+                (operand >> shift_amount, operand.bit(shift_amount - 1))
+            }
+        }
+        ASR => {
+            // ARM ARM 5.1.9
+            if shift_amount == 0 {
+                if !operand.bit(31) {
+                    (0, operand.bit(31))
+                } else {
+                    (0xFFFFFFFF, operand.bit(31))
+                }
+            } else {
+                (
+                    ((operand as i32) >> shift_amount) as u32,
+                    operand.bit(shift_amount - 1),
+                )
+            }
+        }
+        ROR => {
+            // ARM ARM 5.1.11, 5.1.13
+            if shift_amount == 0 {
+                // RRX: rotate right with extend (5.1.13)
+                (((carry_in as u32) << 31) | (operand >> 1), operand.bit(0))
+            } else {
+                (
+                    operand.rotate_right(shift_amount as u32),
+                    operand.bit(shift_amount - 1),
+                )
+            }
+        }
+    }
+}
