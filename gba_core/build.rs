@@ -148,6 +148,13 @@ fn decode_thumb_entry(inst: u16) -> String {
     } else if u16_matches(inst, "01001 *** ********") {
         // THUMB.6: load PC-relative
         "thumb_exec_load_pc_relative".to_string()
+    } else if u16_matches(inst, "0101 *** *** *** ***") {
+        // THUMB.7: load/store with register offset
+        // THUMB.8: load/store sign-extended byte/halfword
+        format!(
+            "thumb_exec_ldr_str_reg_offset::<{OP}>",
+            OP = inst.bit_range(9..12)
+        )
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)

@@ -246,6 +246,70 @@ fn thumb_exec_load_pc_relative(s: &mut Gba, inst: u16) -> InstructionResult {
     InstructionResult::Normal
 }
 
+// THUMB.7: load/store with register offset
+// THUMB.8: load/store sign-extended byte/halfword
+fn thumb_exec_ldr_str_reg_offset<const OP: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
+    //  __7_|_0___1___0___1_|__Op___|_0_|___Ro______|____Rb_____|____Rd_____|LDR/STR
+    //  __8_|_0___1___0___1_|__Op___|_1_|___Ro______|____Rb_____|____Rd_____|""H/SB/SH
+    let reg_d = inst.bit_range(0..3) as usize;
+    let reg_n = inst.bit_range(3..6) as usize;
+    let reg_m = inst.bit_range(6..9) as usize;
+
+    let address = s.cpu_reg_get(reg_n).wrapping_add(s.cpu_reg_get(reg_m));
+    let store_val = s.cpu_reg_get(reg_d);
+    match OP {
+        0b000 => {
+            // STR  Rd,[Rb,Ro]   ;store 32bit data  WORD[Rb+Ro] = Rd
+            s.cpu_store32(address & !0b11, store_val, NonSequential);
+        }
+        0b010 => {
+            // STRB Rd,[Rb,Ro]   ;store  8bit data  BYTE[Rb+Ro] = Rd
+            s.cpu_store8(address, store_val as u8, NonSequential);
+        }
+        0b100 => {
+            // LDR  Rd,[Rb,Ro]   ;load  32bit data  Rd = WORD[Rb+Ro]
+            let value = s.cpu_load32(address & !0b11, NonSequential);
+            let value = value.rotate_right(8 * (address & 0b11));
+            s.cpu_reg_set(reg_d, value);
+            s.cpu_internal_cycle();
+        }
+        0b110 => {
+            // LDRB Rd,[Rb,Ro]   ;load   8bit data  Rd = BYTE[Rb+Ro]
+            let value = s.cpu_load8(address, NonSequential) as u32;
+            s.cpu_reg_set(reg_d, value);
+            s.cpu_internal_cycle();
+        }
+        0b001 => {
+            // STRH Rd,[Rb,Ro]  ;store 16bit data          HALFWORD[Rb+Ro] = Rd
+            s.cpu_store16(address & !0b1, store_val as u16, NonSequential);
+        }
+        0b011 => {
+            // LDSB Rd,[Rb,Ro]  ;load sign-extended 8bit   Rd = BYTE[Rb+Ro]
+            let value = s.cpu_load8(address, NonSequential) as i8 as u32;
+            s.cpu_reg_set(reg_d, value);
+            s.cpu_internal_cycle();
+        }
+        0b101 => {
+            // LDRH Rd,[Rb,Ro]  ;load zero-extended 16bit  Rd = HALFWORD[Rb+Ro]
+            let value = s.cpu_load16(address & !0b1, NonSequential) as u32;
+            let value = value.rotate_right(8 * (address & 0b1));
+            s.cpu_reg_set(reg_d, value);
+            s.cpu_internal_cycle();
+        }
+        0b111 => {
+            // LDSH Rd,[Rb,Ro]  ;load sign-extended 16bit  Rd = HALFWORD[Rb+Ro]
+            let value = s.cpu_load16(address & !0b1, NonSequential) as i16;
+            let value = (value >> (8 * (address & 0b1))) as u32;
+            s.cpu_reg_set(reg_d, value);
+            s.cpu_internal_cycle();
+        }
+        _ => unsafe { std::hint::unreachable_unchecked() },
+    }
+
+    s.cpu.next_fetch_access = NonSequential;
+    InstructionResult::Normal
+}
+
 // THUMB.12: get relative address
 fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let reg_d = inst.bit_range(8..11) as usize;
