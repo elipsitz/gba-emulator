@@ -2,7 +2,7 @@ use super::{
     alu::{self, ThumbAluOpcode},
     cond::Condition,
     exception::ExceptionType,
-    CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP,
+    CpuExecutionState, Gba, InstructionResult, REG_LR, REG_PC, REG_SP,
 };
 use bit::BitIndex;
 
@@ -279,6 +279,31 @@ fn thumb_exec_branch(s: &mut Gba, inst: u16) -> InstructionResult {
     let new_pc = pc.wrapping_add(offset);
     s.cpu_reg_set(REG_PC, new_pc);
     InstructionResult::Branch
+}
+
+// THUMB.19: branch and link
+fn thumb_exec_branch_link<const SUFFIX: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let immediate = (inst.bit_range(0..11)) as u32;
+    if SUFFIX {
+        // Second instruction.
+        let new_pc = s.cpu_reg_get(REG_LR) + (immediate << 1);
+        let return_address = s.cpu_thumb_pc() | 1;
+        s.cpu_reg_set(REG_PC, new_pc);
+        s.cpu_reg_set(REG_LR, return_address);
+        InstructionResult::Branch
+    } else {
+        // First instruction.
+        let signed_offset = if immediate.bit(11) {
+            immediate | 0b1111_1111_1111_1111_1111
+        } else {
+            immediate
+        };
+        let offset = signed_offset << 12;
+        let pc = s.cpu_reg_get(REG_PC);
+        let output = pc.wrapping_add(offset);
+        s.cpu_reg_set(REG_LR, output);
+        InstructionResult::Normal
+    }
 }
 
 // Include look-up table for instruction handlers.

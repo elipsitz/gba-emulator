@@ -159,7 +159,11 @@ fn decode_thumb_entry(inst: u16) -> String {
             _ => format!("thumb_exec_branch_conditional::<{COND}>", COND = middle),
         }
     } else if u16_matches(inst, "11100 ***********") {
+        // THUMB.18: branch
         "thumb_exec_branch".to_string()
+    } else if u16_matches(inst, "1111 * ***********") {
+        // THUMB.19: branch and link
+        format!("thumb_exec_branch_link::<{SUFFIX}>", SUFFIX = inst.bit(11))
     } else {
         "thumb_unimplemented".to_string()
     }
