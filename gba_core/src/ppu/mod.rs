@@ -1,4 +1,5 @@
 use crate::{
+    mem::Memory,
     scheduler::{Event, PpuEvent},
     Gba, HEIGHT, WIDTH,
 };
@@ -43,6 +44,10 @@ pub struct Ppu {
 
     /// OAM - Object Attribute Memory - 1 KiB
     pub oam: Box<[u8]>,
+
+    /// Current frame.
+    #[allow(unused)]
+    pub frame: usize,
 }
 
 impl Ppu {
@@ -52,6 +57,7 @@ impl Ppu {
             dispcnt: DisplayControl::default(),
             dispstat: DisplayStatus::default(),
             vcount: 0,
+            frame: 0,
 
             // 96KiB, but we'll make it 128KiB for accesses
             vram: vec![0; 128 * 1024].into_boxed_slice(),
@@ -59,6 +65,15 @@ impl Ppu {
             oam: vec![0; 1024].into_boxed_slice(),
         }
     }
+}
+
+fn pixel16_to_32(pixel: u16) -> u32 {
+    // Source: xbbbbbgggggrrrrr
+    // Output: ARGB
+    let r = (((pixel >> 0) & 0b11111) as u32) << 19;
+    let g = (((pixel >> 5) & 0b11111) as u32) << 11;
+    let b = (((pixel >> 10) & 0b11111) as u32) << 3;
+    0xFF00_0000 | r | g | b
 }
 
 impl Gba {
@@ -76,10 +91,28 @@ impl Gba {
     }
 
     fn ppu_draw_scanline(&mut self) -> (PpuEvent, usize) {
+        match self.ppu.dispcnt.mode {
+            4 => {
+                let line = self.ppu.vcount as usize;
+                if line < PIXELS_HEIGHT {
+                    let input = &self.ppu.vram[(PIXELS_WIDTH * line)..];
+                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
+                    for x in 0..PIXELS_WIDTH {
+                        let color_index = input[x];
+                        let color_15bit = self.ppu.palette.read_16((color_index as u32) * 2);
+                        output[x] = pixel16_to_32(color_15bit);
+                    }
+                }
+            }
+            m @ _ => panic!("Unsupported video mode {}", m),
+        }
+
         self.ppu.vcount += 1;
         if (self.ppu.vcount as usize) == (PIXELS_HEIGHT + SCANLINES_VBLANK) {
             self.ppu.vcount = 0;
+            self.ppu.frame += 1;
         }
+        self.ppu.dispstat.vblank = (self.ppu.vcount as usize) >= PIXELS_HEIGHT;
         (PpuEvent::EndScanline, CYCLES_SCANLINE)
     }
 }

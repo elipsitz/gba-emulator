@@ -81,7 +81,7 @@ pub struct DisplayStatus {
     pub hblank_irq: bool,
     /// V-Counter IRQ Enable
     pub vcounter_irq: bool,
-    /// V-Count SEtting (LYC) -- 0..=227
+    /// V-Count Setting (LYC) -- 0..=227
     pub vcount_setting: u16,
 }
 
