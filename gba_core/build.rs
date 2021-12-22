@@ -129,6 +129,16 @@ fn decode_thumb_entry(inst: u16) -> String {
     } else if u16_matches(inst, "1010 * *** ********") {
         // THUMB.12: get relative address
         format!("thumb_exec_address_calc::<{SP}>", SP = inst.bit(11),)
+    } else if u16_matches(inst, "1101 **** ********") {
+        let middle = inst.bit_range(8..12);
+        match middle {
+            // Undefined instruction.
+            0b1110 => "thumb_unimplemented".to_string(),
+            // THUMB.17: software interrupt
+            0b1111 => "thumb_exec_swi".to_string(),
+            // THUMB.16: conditional branch
+            _ => format!("thumb_exec_branch_conditional::<{COND}>", COND = middle),
+        }
     } else {
         "thumb_unimplemented".to_string()
     }

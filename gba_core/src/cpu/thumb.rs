@@ -1,4 +1,6 @@
-use super::{alu, CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP};
+use super::{
+    alu, exception::ExceptionType, CpuExecutionState, Gba, InstructionResult, REG_PC, REG_SP,
+};
 use bit::BitIndex;
 
 /// A function that can execute a Thumb instruction.
@@ -125,6 +127,18 @@ fn thumb_exec_address_calc<const SP: bool>(s: &mut Gba, inst: u16) -> Instructio
     let result = base.wrapping_add(immed * 4);
     s.cpu_reg_set(reg_d, result);
     InstructionResult::Normal
+}
+
+// THUMB.16: conditional branch
+fn thumb_exec_branch_conditional<const COND: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
+    todo!();
+}
+
+// THUMB.17: software interrupt
+fn thumb_exec_swi(s: &mut Gba, _inst: u16) -> InstructionResult {
+    let return_address = s.cpu_thumb_pc() + 2;
+    s.cpu_exception(ExceptionType::SoftwareInterrupt, return_address);
+    InstructionResult::Branch
 }
 
 // Include look-up table for instruction handlers.
