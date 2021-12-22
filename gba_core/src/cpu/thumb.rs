@@ -43,7 +43,28 @@ fn thumb_exec_add_sub<const IMM: bool, const SUB: bool>(
     s: &mut Gba,
     inst: u16,
 ) -> InstructionResult {
-    todo!();
+    let reg_d = inst.bit_range(0..3) as usize;
+    let reg_n = inst.bit_range(3..6) as usize;
+    let op1 = s.cpu_reg_get(reg_n);
+    let op2 = if IMM {
+        inst.bit_range(6..9) as u32
+    } else {
+        let reg_m = inst.bit_range(6..9) as usize;
+        s.cpu_reg_get(reg_m)
+    };
+
+    let (result, carry, overflow) = if SUB {
+        alu::calc_sub(op1, op2)
+    } else {
+        alu::calc_add(op1, op2)
+    };
+
+    s.cpu_reg_set(reg_d, result);
+    s.cpu.cpsr.cond_flag_n = result.bit(31);
+    s.cpu.cpsr.cond_flag_z = result == 0;
+    s.cpu.cpsr.cond_flag_c = carry;
+    s.cpu.cpsr.cond_flag_v = overflow;
+    InstructionResult::Normal
 }
 
 /// THUMB.3: move/compare/add/subtract immediate.
