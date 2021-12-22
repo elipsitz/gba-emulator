@@ -193,7 +193,7 @@ fn thumb_exec_hireg<const OPCODE: u16, const MSB_REG_D: bool, const MSB_REG_S: b
     inst: u16,
 ) -> InstructionResult {
     let reg_s = inst.bit_range(3..7) as usize;
-    let reg_d = (inst.bit_range(0..3) as usize) & ((MSB_REG_D as usize) << 3);
+    let reg_d = (inst.bit_range(0..3) as usize) | ((MSB_REG_D as usize) << 3);
     let op1 = s.cpu_reg_get(reg_d);
     let op2 = s.cpu_reg_get(reg_s);
 
