@@ -414,6 +414,32 @@ fn thumb_exec_adjust_sp<const SUB: bool>(s: &mut Gba, inst: u16) -> InstructionR
     InstructionResult::Normal
 }
 
+// THUMB.14: push/pop registers
+fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
+    s: &mut Gba,
+    inst: u16,
+) -> InstructionResult {
+    let reg_list = inst.bit_range(0..8);
+    todo!(
+        "push/pop, POP={} PC_LR={} reg_list={:08b}",
+        POP,
+        PC_LR,
+        reg_list
+    );
+}
+
+// THUMB.15: multiple load/store
+fn thumb_exec_ldr_str_multiple<const LOAD: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
+    let reg_list = inst.bit_range(0..8);
+    let reg_n = inst.bit_range(8..11) as usize;
+    todo!(
+        "ldr/str multiple, LOAD={} reg_n={} reg_list={:08b}",
+        LOAD,
+        reg_n,
+        reg_list
+    );
+}
+
 // THUMB.16: conditional branch
 fn thumb_exec_branch_conditional<const COND: u16>(s: &mut Gba, inst: u16) -> InstructionResult {
     let condition: Condition = (COND as u32).into();

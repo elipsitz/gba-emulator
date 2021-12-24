@@ -187,6 +187,16 @@ fn decode_thumb_entry(inst: u16) -> String {
             // THUMB.16: conditional branch
             _ => format!("thumb_exec_branch_conditional::<{COND}>", COND = middle),
         }
+    } else if u16_matches(inst, "1011 * 10 * ********") {
+        // THUMB.14: push/pop registers
+        format!(
+            "thumb_exec_push_pop::<{POP}, {PC_LR}>",
+            POP = inst.bit(11),
+            PC_LR = inst.bit(8)
+        )
+    } else if u16_matches(inst, "1100 * *** ********") {
+        // THUMB.15: multiple load/store
+        format!("thumb_exec_ldr_str_multiple::<{LOAD}>", LOAD = inst.bit(11))
     } else if u16_matches(inst, "11100 ***********") {
         // THUMB.18: branch
         "thumb_exec_branch".to_string()
