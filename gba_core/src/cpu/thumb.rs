@@ -462,6 +462,7 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
         }
     }
 
+    s.cpu.next_fetch_access = NonSequential;
     s.cpu_reg_set(REG_SP, new_sp);
     instruction_result
 }
@@ -470,12 +471,39 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
 fn thumb_exec_ldr_str_multiple<const LOAD: bool>(s: &mut Gba, inst: u16) -> InstructionResult {
     let reg_list = inst.bit_range(0..8);
     let reg_n = inst.bit_range(8..11) as usize;
-    todo!(
-        "ldr/str multiple, LOAD={} reg_n={} reg_list={:08b}",
-        LOAD,
-        reg_n,
-        reg_list
-    );
+    let num_registers = reg_list.count_ones();
+
+    let start_address = s.cpu_reg_get(reg_n);
+    let new_address = start_address + (4 * num_registers);
+
+    let mut address = start_address;
+    let mut access_type = NonSequential;
+    let mut first = true;
+    for reg in 0..=7 {
+        if reg_list.bit(reg) {
+            if LOAD {
+                let value = s.cpu_load32(address, access_type);
+                s.cpu_reg_set(reg, value);
+            } else {
+                let mut value = s.cpu_reg_get(reg);
+                if reg == reg_n && !first {
+                    // Storing the address base register. Store the *new* value.
+                    value = new_address;
+                }
+                s.cpu_store32(address & !0b11, value, access_type);
+            }
+            first = false;
+            address += 4;
+            access_type = Sequential;
+        }
+    }
+
+    s.cpu.next_fetch_access = NonSequential;
+    if !(LOAD && reg_list.bit(reg_n)) {
+        // With LOAD, if Rn is in Rlist, the new address is not written back.
+        s.cpu_reg_set(reg_n, new_address);
+    }
+    InstructionResult::Normal
 }
 
 // THUMB.16: conditional branch
