@@ -446,11 +446,11 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
     }
 
     let (start_address, new_sp) = if POP {
-        let start_address = sp.wrapping_sub(4 * num_registers);
-        (start_address, start_address)
-    } else {
         let new_sp = sp.wrapping_add(4 * num_registers);
         (sp, new_sp)
+    } else {
+        let start_address = sp.wrapping_sub(4 * num_registers);
+        (start_address, start_address)
     };
 
     let mut address = start_address;
@@ -499,7 +499,7 @@ fn thumb_exec_ldr_str_multiple<const LOAD: bool>(s: &mut Gba, inst: u16) -> Inst
     let num_registers = reg_list.count_ones();
 
     let start_address = s.cpu_reg_get(reg_n);
-    let mut new_address = start_address + (4 * num_registers);
+    let mut new_address = start_address.wrapping_add(4 * num_registers);
 
     let instruction_result = if num_registers != 0 {
         let mut address = start_address;
