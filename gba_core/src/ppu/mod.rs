@@ -92,7 +92,21 @@ impl Gba {
 
     fn ppu_draw_scanline(&mut self) -> (PpuEvent, usize) {
         match self.ppu.dispcnt.mode {
+            0 => {}
+            3 => {
+                // Mode 3: 240x160, 16 bpp
+                let line = self.ppu.vcount as usize;
+                if line < PIXELS_HEIGHT {
+                    let input = &mut self.ppu.vram[(PIXELS_WIDTH * line * 2)..];
+                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
+                    for x in 0..PIXELS_WIDTH {
+                        let color_15bit = input.read_16((x * 2) as u32);
+                        output[x] = pixel16_to_32(color_15bit);
+                    }
+                }
+            }
             4 => {
+                // Mode 4: 240x160, 8 bpp (palette)
                 let line = self.ppu.vcount as usize;
                 if line < PIXELS_HEIGHT {
                     let input = &self.ppu.vram[(PIXELS_WIDTH * line)..];
