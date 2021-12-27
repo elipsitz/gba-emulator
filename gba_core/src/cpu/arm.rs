@@ -517,7 +517,7 @@ fn arm_exec_mul_long<const SIGNED: bool, const ACCUMULATE: bool, const SET_FLAGS
     s.cpu_reg_set(reg_hi, (result >> 32) as u32);
     s.cpu_reg_set(reg_lo, (result & 0xFFFF_FFFF) as u32);
     if SET_FLAGS {
-        s.cpu.cpsr.cond_flag_n = result.bit(31);
+        s.cpu.cpsr.cond_flag_n = result.bit(63);
         s.cpu.cpsr.cond_flag_z = result == 0;
     }
 
