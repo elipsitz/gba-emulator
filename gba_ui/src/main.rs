@@ -1,7 +1,7 @@
 const WIDTH: usize = 240;
 const HEIGHT: usize = 160;
 
-use gba_core::Gba;
+use gba_core::{Gba, KeypadState};
 use minifb::{Key, Window, WindowOptions};
 use std::time::{Duration, Instant};
 
@@ -50,7 +50,19 @@ fn main() {
             break;
         }
 
-        // TODO: get input.
+        // Get keypad input.
+        let mut keypad = KeypadState::default();
+        keypad.a = window.is_key_down(Key::Z);
+        keypad.b = window.is_key_down(Key::X);
+        keypad.select = window.is_key_down(Key::RightShift);
+        keypad.start = window.is_key_down(Key::Enter);
+        keypad.right = window.is_key_down(Key::Right);
+        keypad.left = window.is_key_down(Key::Left);
+        keypad.up = window.is_key_down(Key::Up);
+        keypad.down = window.is_key_down(Key::Down);
+        keypad.r = window.is_key_down(Key::S);
+        keypad.l = window.is_key_down(Key::A);
+        gba.set_keypad_state(keypad);
 
         // Run emulator for a frame.
         gba.emulate_frame();

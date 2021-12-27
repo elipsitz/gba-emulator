@@ -1,4 +1,4 @@
-use crate::{Bus, Cpu, Event, Io, Ppu, Rom, Scheduler};
+use crate::{Bus, Cpu, Event, Io, KeypadState, Ppu, Rom, Scheduler};
 
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
@@ -35,6 +35,9 @@ pub struct Gba {
 
     /// How much we overshot the last frame by.
     last_frame_overshoot: usize,
+
+    /// Current keypad state.
+    pub(crate) keypad_state: KeypadState,
 }
 
 impl Gba {
@@ -51,6 +54,7 @@ impl Gba {
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
             last_frame_overshoot: 0,
+            keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
         gba
@@ -96,5 +100,10 @@ impl Gba {
     /// (240 * 160) pixels, each pixel in ARGB format, row major.
     pub fn framebuffer(&self) -> &[u32] {
         &self.ppu.framebuffer
+    }
+
+    /// Set the current keypad state.
+    pub fn set_keypad_state(&mut self, state: KeypadState) {
+        self.keypad_state = state;
     }
 }

@@ -15,6 +15,7 @@ impl Gba {
             REG_DISPCNT => self.ppu.dispcnt.read(),
             REG_DISPSTAT => self.ppu.dispstat.read(),
             REG_VCOUNT => self.ppu.vcount as u16,
+            REG_KEYINPUT => self.keypad_state.into(),
             _ => 0,
         }
     }
@@ -60,3 +61,4 @@ impl Gba {
 pub const REG_DISPCNT: u32 = 0x0400_0000;
 pub const REG_DISPSTAT: u32 = 0x0400_0004;
 pub const REG_VCOUNT: u32 = 0x0400_0006;
+pub const REG_KEYINPUT: u32 = 0x0400_0130;
