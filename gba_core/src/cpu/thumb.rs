@@ -420,12 +420,50 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
     inst: u16,
 ) -> InstructionResult {
     let reg_list = inst.bit_range(0..8);
-    todo!(
-        "push/pop, POP={} PC_LR={} reg_list={:08b}",
-        POP,
-        PC_LR,
-        reg_list
-    );
+    let num_registers = reg_list.count_ones() + (PC_LR as u32);
+
+    let sp = s.cpu_reg_get(REG_SP);
+    let (start_address, new_sp) = if POP {
+        let start_address = sp.wrapping_sub(4 * num_registers);
+        (start_address, start_address)
+    } else {
+        let new_sp = sp.wrapping_add(4 * num_registers);
+        (sp, new_sp)
+    };
+
+    let mut address = start_address;
+    let mut access_type = NonSequential;
+    for reg in 0..=7 {
+        if reg_list.bit(reg) {
+            if POP {
+                let value = s.cpu_load32(address, access_type);
+                s.cpu_reg_set(reg, value);
+            } else {
+                let value = s.cpu_reg_get(reg);
+                s.cpu_store32(address & !0b11, value, access_type);
+            }
+
+            address += 4;
+            access_type = Sequential;
+        }
+    }
+
+    let mut instruction_result = InstructionResult::Normal;
+    if PC_LR {
+        if POP {
+            // Pop PC.
+            let value = s.cpu_load32(address, access_type);
+            s.cpu_reg_set(REG_PC, value);
+            instruction_result = InstructionResult::Branch;
+        } else {
+            // Store LR.
+            let value = s.cpu_reg_get(REG_LR);
+            s.cpu_store32(address, value, access_type);
+        }
+    }
+
+    s.cpu_reg_set(REG_SP, new_sp);
+    instruction_result
 }
 
 // THUMB.15: multiple load/store
