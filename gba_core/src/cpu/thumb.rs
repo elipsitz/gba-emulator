@@ -421,8 +421,30 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
 ) -> InstructionResult {
     let reg_list = inst.bit_range(0..8);
     let num_registers = reg_list.count_ones() + (PC_LR as u32);
-
     let sp = s.cpu_reg_get(REG_SP);
+
+    if (num_registers == 0) && !PC_LR {
+        // Empty rlist: weird behavior, transfer r15 (pc), then change SP by 0x40.
+        s.cpu.next_fetch_access = NonSequential;
+
+        return if POP {
+            let new_sp = sp.wrapping_add(0x40);
+            s.cpu_reg_set(REG_SP, new_sp);
+
+            let value = s.cpu_load32(sp, NonSequential);
+            s.cpu_reg_set(REG_PC, value);
+            s.cpu_internal_cycle();
+            InstructionResult::Branch
+        } else {
+            let new_sp = sp.wrapping_sub(0x40);
+            s.cpu_reg_set(REG_SP, new_sp);
+
+            let value = s.cpu_reg_get(REG_PC);
+            s.cpu_store32(new_sp, value, NonSequential);
+            InstructionResult::Normal
+        };
+    }
+
     let (start_address, new_sp) = if POP {
         let start_address = sp.wrapping_sub(4 * num_registers);
         (start_address, start_address)
