@@ -543,10 +543,15 @@ fn arm_exec_swap<const BYTE: bool>(s: &mut Gba, inst: u32) -> InstructionResult 
         value.rotate_right(8 * (address & 0b11))
     };
 
-    let store_data = s.cpu_reg_get(reg_index_m);
-    s.cpu_store32(address & !0b11, store_data, NonSequential);
-    s.cpu_internal_cycle();
+    if BYTE {
+        let store_data = s.cpu_reg_get(reg_index_m) as u8;
+        s.cpu_store8(address, store_data, NonSequential);
+    } else {
+        let store_data = s.cpu_reg_get(reg_index_m);
+        s.cpu_store32(address & !0b11, store_data, NonSequential);
+    }
 
+    s.cpu_internal_cycle();
     s.cpu_reg_set(reg_index_d, temp);
 
     if reg_index_d == REG_PC {
