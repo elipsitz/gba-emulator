@@ -286,7 +286,7 @@ pub fn shift_by_register(
         }
         ROR => {
             // ARM ARM 5.1.12
-            let new_amount = shift_amount & 0xF;
+            let new_amount = shift_amount & 0x1F;
             if shift_amount == 0 {
                 (operand, carry_in)
             } else if new_amount == 0 {
