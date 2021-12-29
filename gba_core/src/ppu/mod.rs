@@ -72,18 +72,71 @@ impl Ppu {
 impl Gba {
     pub fn ppu_init(&mut self) {
         self.scheduler
-            .push_event(Event::Ppu(PpuEvent::EndScanline), CYCLES_SCANLINE);
+            .push_event(Event::Ppu(PpuEvent::EndHDraw), CYCLES_HDRAW);
     }
 
     pub fn ppu_on_event(&mut self, event: PpuEvent, lateness: usize) {
         let (next_event, deadline) = match event {
-            PpuEvent::EndScanline => self.ppu_draw_scanline(),
+            PpuEvent::EndHDraw => self.ppu_on_end_hdraw(),
+            PpuEvent::EndHBlank => self.ppu_on_end_hblank(),
+            PpuEvent::EndVBlankHDraw => self.ppu_on_end_vblank_hdraw(),
+            PpuEvent::EndVBlankHBlank => self.ppu_on_end_vblank_hblank(),
         };
         let deadline = deadline - lateness;
         self.scheduler.push_event(Event::Ppu(next_event), deadline);
     }
 
-    fn ppu_draw_scanline(&mut self) -> (PpuEvent, usize) {
+    fn ppu_on_end_hdraw(&mut self) -> (PpuEvent, usize) {
+        self.ppu.dispstat.hblank = true;
+
+        (PpuEvent::EndHBlank, CYCLES_HBLANK)
+    }
+
+    fn ppu_on_end_hblank(&mut self) -> (PpuEvent, usize) {
+        // Increment the scanline.
+        self.ppu.dispstat.hblank = false;
+        self.ppu.vcount += 1;
+
+        if (self.ppu.vcount as usize) == PIXELS_HEIGHT {
+            // Just entered vblank.
+            self.ppu.dispstat.vblank = true;
+            (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
+        } else {
+            // Draw the next scanline (which is visible).
+            self.ppu_draw_scanline();
+
+            (PpuEvent::EndHDraw, CYCLES_HDRAW)
+        }
+    }
+
+    fn ppu_on_end_vblank_hdraw(&mut self) -> (PpuEvent, usize) {
+        self.ppu.dispstat.hblank = true;
+
+        (PpuEvent::EndVBlankHBlank, CYCLES_HBLANK)
+    }
+
+    fn ppu_on_end_vblank_hblank(&mut self) -> (PpuEvent, usize) {
+        // Increment the scanline.
+        self.ppu.dispstat.hblank = false;
+        self.ppu.vcount += 1;
+
+        if (self.ppu.vcount as usize) == (PIXELS_HEIGHT + SCANLINES_VBLANK) {
+            // Finished vblank.
+            self.ppu.dispstat.vblank = false;
+            self.ppu.vcount = 0;
+            self.ppu.frame += 1;
+
+            // Draw the first scanline.
+            self.ppu_draw_scanline();
+
+            (PpuEvent::EndHDraw, CYCLES_HDRAW)
+        } else {
+            // Another vblank scanline.
+            (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
+        }
+    }
+
+    fn ppu_draw_scanline(&mut self) {
         match self.ppu.dispcnt.mode {
             0 => {}
             3 => {
@@ -113,13 +166,5 @@ impl Gba {
             }
             m @ _ => panic!("Unsupported video mode {}", m),
         }
-
-        self.ppu.vcount += 1;
-        if (self.ppu.vcount as usize) == (PIXELS_HEIGHT + SCANLINES_VBLANK) {
-            self.ppu.vcount = 0;
-            self.ppu.frame += 1;
-        }
-        self.ppu.dispstat.vblank = (self.ppu.vcount as usize) >= PIXELS_HEIGHT;
-        (PpuEvent::EndScanline, CYCLES_SCANLINE)
     }
 }

@@ -20,8 +20,17 @@ pub enum Event {
 
 #[derive(Copy, Clone, Debug)]
 pub enum PpuEvent {
-    /// End of scanline.
-    EndScanline,
+    /// End of h-draw (during v-draw).
+    EndHDraw,
+
+    /// End of h-blank (during v-draw).
+    EndHBlank,
+
+    /// End of h-draw (during v-blank).
+    EndVBlankHDraw,
+
+    /// End of h-blank (during v-blank).
+    EndVBlankHBlank,
 }
 
 impl Scheduler {
