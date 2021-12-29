@@ -246,7 +246,10 @@ impl Gba {
             REGION_PALETTE => self.ppu.palette.write_32(addr & 0x3FF, data),
             REGION_OAM => self.ppu.oam.write_32(addr & 0x3FF, data),
             _ => {
-                eprintln!("Bad memory store (32 bit) at {:X}, data {:X}", addr, data);
+                eprintln!(
+                    "Bad memory store (32 bit) at {:X}, data {:X}, PC={:08X}",
+                    addr, data, self.cpu.pc
+                );
             }
         }
     }

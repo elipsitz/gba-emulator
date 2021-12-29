@@ -3,8 +3,10 @@ use crate::{
     scheduler::{Event, PpuEvent},
     Gba, HEIGHT, WIDTH,
 };
+use color::Color15;
 use registers::*;
 
+mod color;
 mod registers;
 
 #[allow(unused)]
@@ -67,15 +69,6 @@ impl Ppu {
     }
 }
 
-fn pixel16_to_32(pixel: u16) -> u32 {
-    // Source: xbbbbbgggggrrrrr
-    // Output: ARGB
-    let r = (((pixel >> 0) & 0b11111) as u32) << 19;
-    let g = (((pixel >> 5) & 0b11111) as u32) << 11;
-    let b = (((pixel >> 10) & 0b11111) as u32) << 3;
-    0xFF00_0000 | r | g | b
-}
-
 impl Gba {
     pub fn ppu_init(&mut self) {
         self.scheduler
@@ -100,8 +93,8 @@ impl Gba {
                     let input = &mut self.ppu.vram[(PIXELS_WIDTH * line * 2)..];
                     let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
                     for x in 0..PIXELS_WIDTH {
-                        let color_15bit = input.read_16((x * 2) as u32);
-                        output[x] = pixel16_to_32(color_15bit);
+                        let color = Color15(input.read_16((x * 2) as u32));
+                        output[x] = color.as_argb();
                     }
                 }
             }
@@ -113,8 +106,8 @@ impl Gba {
                     let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
                     for x in 0..PIXELS_WIDTH {
                         let color_index = input[x];
-                        let color_15bit = self.ppu.palette.read_16((color_index as u32) * 2);
-                        output[x] = pixel16_to_32(color_15bit);
+                        let color = Color15(self.ppu.palette.read_16((color_index as u32) * 2));
+                        output[x] = color.as_argb();
                     }
                 }
             }
