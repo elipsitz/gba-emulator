@@ -1,5 +1,4 @@
 use crate::{
-    mem::Memory,
     scheduler::{Event, PpuEvent},
     Gba, HEIGHT, WIDTH,
 };
@@ -8,6 +7,7 @@ use registers::*;
 
 mod color;
 mod registers;
+mod render;
 
 #[allow(unused)]
 mod constants {
@@ -103,7 +103,7 @@ impl Gba {
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         } else {
             // Draw the next scanline (which is visible).
-            self.ppu_draw_scanline();
+            self.ppu_render_scanline();
 
             (PpuEvent::EndHDraw, CYCLES_HDRAW)
         }
@@ -127,44 +127,12 @@ impl Gba {
             self.ppu.frame += 1;
 
             // Draw the first scanline.
-            self.ppu_draw_scanline();
+            self.ppu_render_scanline();
 
             (PpuEvent::EndHDraw, CYCLES_HDRAW)
         } else {
             // Another vblank scanline.
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
-        }
-    }
-
-    fn ppu_draw_scanline(&mut self) {
-        match self.ppu.dispcnt.mode {
-            0 => {}
-            3 => {
-                // Mode 3: 240x160, 16 bpp
-                let line = self.ppu.vcount as usize;
-                if line < PIXELS_HEIGHT {
-                    let input = &mut self.ppu.vram[(PIXELS_WIDTH * line * 2)..];
-                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
-                    for x in 0..PIXELS_WIDTH {
-                        let color = Color15(input.read_16((x * 2) as u32));
-                        output[x] = color.as_argb();
-                    }
-                }
-            }
-            4 => {
-                // Mode 4: 240x160, 8 bpp (palette)
-                let line = self.ppu.vcount as usize;
-                if line < PIXELS_HEIGHT {
-                    let input = &self.ppu.vram[(PIXELS_WIDTH * line)..];
-                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
-                    for x in 0..PIXELS_WIDTH {
-                        let color_index = input[x];
-                        let color = Color15(self.ppu.palette.read_16((color_index as u32) * 2));
-                        output[x] = color.as_argb();
-                    }
-                }
-            }
-            m @ _ => panic!("Unsupported video mode {}", m),
         }
     }
 }
