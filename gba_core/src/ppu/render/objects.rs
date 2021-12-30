@@ -1,5 +1,6 @@
 use std::hint::unreachable_unchecked;
 
+use super::super::constants::*;
 use crate::{mem::Memory, Gba};
 use bit::BitIndex;
 
@@ -32,8 +33,16 @@ struct ObjectAttributes {
 }
 
 impl ObjectAttributes {
-    fn y(&self) -> u32 {
-        self.raw[0].bit_range(0..8) as u32
+    fn pos(&self) -> (i32, i32) {
+        let mut x = self.raw[1].bit_range(0..9) as i32;
+        let mut y = self.raw[0].bit_range(0..8) as i32;
+        if x >= (PIXELS_WIDTH as i32) {
+            x -= 512;
+        }
+        if y >= (PIXELS_HEIGHT as i32) {
+            y -= 256;
+        }
+        (x, y)
     }
 
     fn object_mode(&self) -> ObjectMode {
@@ -72,10 +81,6 @@ impl ObjectAttributes {
         }
     }
 
-    fn x(&self) -> u32 {
-        self.raw[1].bit_range(0..9) as u32
-    }
-
     /// OAM_AFF_ENTY this sprite uses, valid only if sprite is affine.
     fn affine_index(&self) -> usize {
         self.raw[1].bit_range(9..14) as usize
@@ -91,7 +96,7 @@ impl ObjectAttributes {
         self.raw[1].bit(0xd)
     }
 
-    fn size(&self) -> (u32, u32) {
+    fn size(&self) -> (i32, i32) {
         let shape = self.raw[0].bit_range(14..16);
         let size = self.raw[1].bit_range(14..16);
         match (shape, size) {
@@ -139,12 +144,23 @@ impl Gba {
 
     /// Render the objects in the current scanline.
     pub(super) fn ppu_render_objects(&mut self) {
+        let screen_y = self.ppu.vcount as i32;
+
         for i in 0..128 {
             let attrs = self.get_attributes(i);
             if attrs.object_mode() == ObjectMode::Regular {
-                println!("sprite {}", i);
+                let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
+                if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
+                    // Sprite isn't in this scanline.
+                    continue;
+                }
+                let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * (screen_y as usize))..];
+                let left = obj_x.max(0).min(PIXELS_WIDTH as i32) as usize;
+                let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32) as usize;
+                for i in left..right {
+                    output[i as usize] = 0xFF778899;
+                }
             }
         }
-        println!("====");
     }
 }

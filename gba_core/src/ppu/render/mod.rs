@@ -7,6 +7,12 @@ mod objects;
 impl Gba {
     /// Render the current scanline.
     pub(super) fn ppu_render_scanline(&mut self) {
+        // Clear background.
+        let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * (self.ppu.vcount as usize))..];
+        for x in 0..PIXELS_WIDTH {
+            output[x] = 0xFF000000;
+        }
+
         self.ppu_render_objects();
 
         match self.ppu.dispcnt.mode {
