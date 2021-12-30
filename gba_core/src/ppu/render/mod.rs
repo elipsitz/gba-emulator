@@ -2,9 +2,13 @@ use super::constants::*;
 use super::Color15;
 use crate::{mem::Memory, Gba};
 
+mod objects;
+
 impl Gba {
     /// Render the current scanline.
     pub(super) fn ppu_render_scanline(&mut self) {
+        self.ppu_render_objects();
+
         match self.ppu.dispcnt.mode {
             0 => {}
             3 => {
