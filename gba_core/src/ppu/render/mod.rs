@@ -36,6 +36,9 @@ impl Default for ObjectBufferEntry {
 /// Object scanline buffer.
 type ObjectBuffer = [ObjectBufferEntry; PIXELS_WIDTH];
 
+/// Background scanline buffer.
+type BackgroundBuffer = [Color15; PIXELS_WIDTH];
+
 impl Gba {
     /// Render the current scanline.
     pub(super) fn ppu_render_scanline(&mut self) {
@@ -43,48 +46,54 @@ impl Gba {
         let mut object_buffer = [ObjectBufferEntry::default(); PIXELS_WIDTH];
         self.ppu_render_objects(&mut object_buffer);
 
+        // Render backgrounds.
+        let screen_y = self.ppu.vcount as usize;
+        let mut background_buffer = [Color15::TRANSPARENT; PIXELS_WIDTH];
         match self.ppu.dispcnt.mode {
             0 => {}
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
-                let line = self.ppu.vcount as usize;
-                if line < PIXELS_HEIGHT {
-                    let input = &mut self.ppu.vram[(PIXELS_WIDTH * line * 2)..];
-                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
-                    for x in 0..PIXELS_WIDTH {
-                        let color = Color15(input.read_16((x * 2) as u32));
-                        output[x] = color.as_argb();
+                if self.ppu.dispcnt.display_bg[2] {
+                    let input = &mut self.ppu.vram[(PIXELS_WIDTH * screen_y * 2)..];
+                    for screen_x in 0..PIXELS_WIDTH {
+                        let color = Color15(input.read_16((screen_x * 2) as u32));
+                        background_buffer[screen_x] = color;
                     }
                 }
             }
             4 => {
                 // Mode 4: Bitmap: 240x160, 8 bpp (palette) (allows page flipping)
-                let line = self.ppu.vcount as usize;
-                if line < PIXELS_HEIGHT {
-                    let input = &self.ppu.vram[(PIXELS_WIDTH * line)..];
-                    let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * line)..];
-                    for x in 0..PIXELS_WIDTH {
-                        let color_index = input[x];
-                        let color = Color15(self.ppu.palette.read_16((color_index as u32) * 2));
-                        output[x] = color.as_argb();
+                if self.ppu.dispcnt.display_bg[2] {
+                    for screen_x in 0..PIXELS_WIDTH {
+                        let index = self.ppu.vram[(PIXELS_WIDTH * screen_y) + screen_x];
+                        let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
+                        background_buffer[screen_x] = color;
                     }
                 }
             }
             m @ _ => panic!("Unsupported video mode {}", m),
         }
 
-        self.compose_scanline(&object_buffer);
+        self.compose_scanline(&object_buffer, &background_buffer);
     }
 
     /// Do final composition of a scanline and write it to the screenbuffer.
-    fn compose_scanline(&mut self, object_buffer: &ObjectBuffer) {
+    fn compose_scanline(
+        &mut self,
+        object_buffer: &ObjectBuffer,
+        background_buffer: &BackgroundBuffer,
+    ) {
         let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
         let backdrop_color = Color15(self.ppu.palette.read_16(0));
 
         for x in 0..PIXELS_WIDTH {
             let mut color = backdrop_color;
 
-            // TODO handle backgrounds properly
+            // TODO handle backgrounds / object priority properly
+            if background_buffer[x] != Color15::TRANSPARENT {
+                color = background_buffer[x];
+            }
+
             if object_buffer[x].color != Color15::TRANSPARENT {
                 color = object_buffer[x].color;
             }
