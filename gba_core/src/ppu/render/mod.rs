@@ -66,8 +66,10 @@ impl Gba {
             4 => {
                 // Mode 4: Bitmap: 240x160, 8 bpp (palette) (allows page flipping)
                 if self.ppu.dispcnt.display_bg[2] {
+                    let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);
+                    let base_address = page_address + (PIXELS_WIDTH * screen_y);
                     for screen_x in 0..PIXELS_WIDTH {
-                        let index = self.ppu.vram[(PIXELS_WIDTH * screen_y) + screen_x];
+                        let index = self.ppu.vram[base_address + screen_x];
                         let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
                         background_buffer[screen_x] = color;
                     }
