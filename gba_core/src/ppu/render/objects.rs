@@ -158,11 +158,14 @@ impl Gba {
                 let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32);
 
                 // Scanline of the sprite we're drawing.
-                let sprite_line = screen_y - obj_y;
+                let sprite_y = if attrs.v_flip() {
+                    obj_h - (screen_y - obj_y) - 1
+                } else {
+                    screen_y - obj_y
+                };
                 // Left-most tile index of the sprite at this scanline.
                 let tile_start = {
-                    // TODO handle sprite flipping.
-                    let tile_y = sprite_line / 8; // Y coordinate (in tiles) we're looking at.
+                    let tile_y = sprite_y / 8; // Y coordinate (in tiles) we're looking at.
                     let tile_stride = if self.ppu.dispcnt.obj_character_vram_mapping {
                         // 1-D mapping, stride is width in tiles.
                         obj_w / 8
@@ -172,14 +175,19 @@ impl Gba {
                     };
                     attrs.tile_index() + ((tile_y * tile_stride) as usize)
                 };
-                let subtile_y = sprite_line % 8; // Y within the current tile.
+                let subtile_y = sprite_y % 8; // Y within the current tile.
 
                 for i in left..right {
-                    let sprite_x = i - obj_x; // X relative to sprite left.
+                    // X relative to sprite left.
+                    let sprite_x = if attrs.h_flip() {
+                        obj_w - (i - obj_x) - 1
+                    } else {
+                        i - obj_x
+                    };
                     let tile_x = sprite_x / 8; // Tile x within the current sprite.
                     let subtile_x = sprite_x % 8; // X within the current tile.
                     let tile_index = (tile_start + (tile_x as usize)) % 1024; // Index of the current tile.
-                    // TODO if using bitmap mode and tile_index < 512, don't draw it.
+                                                                              // TODO if using bitmap mode and tile_index < 512, don't draw it.
 
                     let tile_address = 0x10000 + (tile_index * 32);
                     let tile_pixel = (subtile_y * 8) + subtile_x;
