@@ -16,6 +16,10 @@ impl Gba {
             REG_DISPSTAT => self.ppu.dispstat.read(),
             REG_VCOUNT => self.ppu.vcount as u16,
             REG_KEYINPUT => self.keypad_state.into(),
+            REG_BG0CNT => self.ppu.bgcnt[0].read(),
+            REG_BG1CNT => self.ppu.bgcnt[1].read(),
+            REG_BG2CNT => self.ppu.bgcnt[2].read(),
+            REG_BG3CNT => self.ppu.bgcnt[3].read(),
             _ => 0,
         }
     }
@@ -24,6 +28,18 @@ impl Gba {
         match addr {
             REG_DISPCNT => self.ppu.dispcnt.write(value),
             REG_DISPSTAT => self.ppu.dispstat.write(value),
+            REG_BG0CNT => self.ppu.bgcnt[0].write(value),
+            REG_BG1CNT => self.ppu.bgcnt[1].write(value),
+            REG_BG2CNT => self.ppu.bgcnt[2].write(value),
+            REG_BG3CNT => self.ppu.bgcnt[3].write(value),
+            REG_BG0HOFS => self.ppu.bg_hofs[0] = value & 0x1FF,
+            REG_BG0VOFS => self.ppu.bg_vofs[0] = value & 0x1FF,
+            REG_BG1HOFS => self.ppu.bg_hofs[1] = value & 0x1FF,
+            REG_BG1VOFS => self.ppu.bg_vofs[1] = value & 0x1FF,
+            REG_BG2HOFS => self.ppu.bg_hofs[2] = value & 0x1FF,
+            REG_BG2VOFS => self.ppu.bg_vofs[2] = value & 0x1FF,
+            REG_BG3HOFS => self.ppu.bg_hofs[3] = value & 0x1FF,
+            REG_BG3VOFS => self.ppu.bg_vofs[3] = value & 0x1FF,
             _ => {}
         }
     }
@@ -62,3 +78,15 @@ pub const REG_DISPCNT: u32 = 0x0400_0000;
 pub const REG_DISPSTAT: u32 = 0x0400_0004;
 pub const REG_VCOUNT: u32 = 0x0400_0006;
 pub const REG_KEYINPUT: u32 = 0x0400_0130;
+pub const REG_BG0CNT: u32 = 0x0400_0008;
+pub const REG_BG1CNT: u32 = 0x0400_000A;
+pub const REG_BG2CNT: u32 = 0x0400_000C;
+pub const REG_BG3CNT: u32 = 0x0400_000E;
+pub const REG_BG0HOFS: u32 = 0x0400_0010;
+pub const REG_BG0VOFS: u32 = 0x0400_0012;
+pub const REG_BG1HOFS: u32 = 0x0400_0014;
+pub const REG_BG1VOFS: u32 = 0x0400_0016;
+pub const REG_BG2HOFS: u32 = 0x0400_0018;
+pub const REG_BG2VOFS: u32 = 0x0400_001A;
+pub const REG_BG3HOFS: u32 = 0x0400_001C;
+pub const REG_BG3VOFS: u32 = 0x0400_001E;

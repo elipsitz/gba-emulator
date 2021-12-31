@@ -35,6 +35,15 @@ pub struct Ppu {
     /// Register DISPSTAT - General LCD Status,
     pub dispstat: DisplayStatus,
 
+    /// Registers BGxCNT - Background Control
+    pub bgcnt: [BackgroundControl; 4],
+
+    /// Registers BGxHOFS - Background X-Offsets
+    pub bg_hofs: [u16; 4],
+
+    /// Registers BGxVOFS - Background Y-Offsets
+    pub bg_vofs: [u16; 4],
+
     /// Current scanline (0..=227). 160..=227 are in vblank.
     pub vcount: u16,
 
@@ -55,9 +64,12 @@ pub struct Ppu {
 impl Ppu {
     pub fn new() -> Ppu {
         Ppu {
-            framebuffer: vec![0xFFFF7518u32; WIDTH * HEIGHT].into_boxed_slice(),
+            framebuffer: vec![0; WIDTH * HEIGHT].into_boxed_slice(),
             dispcnt: DisplayControl::default(),
             dispstat: DisplayStatus::default(),
+            bgcnt: <[BackgroundControl; 4]>::default(),
+            bg_hofs: [0; 4],
+            bg_vofs: [0; 4],
             vcount: 0,
             frame: 0,
 
@@ -135,4 +147,12 @@ impl Gba {
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         }
     }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+pub enum ColorMode {
+    /// 4 bits per pixel (16 colors).
+    Bpp4 = 0,
+    /// 8 bits per pixel (256 colors).
+    Bpp8 = 1,
 }

@@ -2,7 +2,7 @@ use std::hint::unreachable_unchecked;
 
 use super::super::constants::*;
 use super::{ObjectBuffer, PALETTE_TABLE_OBJ};
-use crate::ppu::PIXELS_WIDTH;
+use crate::ppu::{ColorMode, PIXELS_WIDTH};
 use crate::{mem::Memory, ppu::color::Color15, Gba};
 use bit::BitIndex;
 
@@ -20,14 +20,6 @@ enum GraphicsMode {
     Blend = 0b01,
     Window = 0b10,
     Forbidden = 0b11,
-}
-
-#[derive(Clone, Copy, Debug, PartialEq)]
-enum ColorMode {
-    /// 4 bits per pixel (16 colors).
-    Bpp4,
-    /// 8 bits per pixel (256 colors).
-    Bpp8,
 }
 
 struct ObjectAttributes {

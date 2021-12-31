@@ -1,5 +1,7 @@
 use bit::BitIndex;
 
+use super::ColorMode;
+
 /// DISPCNT - LCD Control
 #[derive(Default)]
 pub struct DisplayControl {
@@ -101,5 +103,85 @@ impl DisplayStatus {
             | ((self.hblank_irq as u16) << 4)
             | ((self.vcounter_irq as u16) << 5)
             | (self.vcount_setting << 8)
+    }
+}
+
+#[derive(Copy, Clone)]
+pub struct BackgroundSize(u16);
+
+impl BackgroundSize {
+    /// Returns the size of the background in tiles.
+    pub fn tiles(self, affine: bool) -> (usize, usize) {
+        match (affine, self.0) {
+            (false, 0b00) => (32, 32),
+            (false, 0b01) => (64, 32),
+            (false, 0b10) => (32, 64),
+            (false, 0b11) => (64, 64),
+            (true, 0b00) => (16, 16),
+            (true, 0b01) => (32, 32),
+            (true, 0b10) => (64, 64),
+            (true, 0b11) => (128, 128),
+            _ => unsafe { std::hint::unreachable_unchecked() },
+        }
+    }
+}
+
+/// BGxCNT - Background Control
+pub struct BackgroundControl {
+    /// BG Priority
+    pub priority: u16,
+    /// Character base block.
+    /// Charblock serving as base for character/tile indexing.
+    pub character_base_block: u16,
+    /// Mosaic.
+    pub mosaic: bool,
+    /// Color mode.
+    pub color_mode: ColorMode,
+    /// Screen base block.
+    /// Screenblock serving as base for screenentry/map indexing.
+    pub screen_base_block: u16,
+    /// Affine wrapping. If true, affine backgrounds wrap at edges.
+    pub affine_wrap: bool,
+    /// Background size.
+    pub size: BackgroundSize,
+}
+
+impl Default for BackgroundControl {
+    fn default() -> Self {
+        BackgroundControl {
+            priority: 0,
+            character_base_block: 0,
+            mosaic: false,
+            color_mode: ColorMode::Bpp4,
+            screen_base_block: 0,
+            affine_wrap: false,
+            size: BackgroundSize(0),
+        }
+    }
+}
+
+impl BackgroundControl {
+    pub fn write(&mut self, val: u16) {
+        self.priority = val.bit_range(0..2);
+        self.character_base_block = val.bit_range(2..4);
+        self.mosaic = val.bit(6);
+        self.color_mode = if val.bit(7) {
+            ColorMode::Bpp8
+        } else {
+            ColorMode::Bpp4
+        };
+        self.screen_base_block = val.bit_range(8..13);
+        self.affine_wrap = val.bit(13);
+        self.size = BackgroundSize(val.bit_range(14..16));
+    }
+
+    pub fn read(&self) -> u16 {
+        (self.priority << 0)
+            | (self.character_base_block << 2)
+            | ((self.mosaic as u16) << 6)
+            | ((self.color_mode as u16) << 7)
+            | (self.screen_base_block << 8)
+            | ((self.affine_wrap as u16) << 13)
+            | (self.size.0 << 14)
     }
 }
