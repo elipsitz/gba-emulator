@@ -75,6 +75,20 @@ impl Gba {
                     }
                 }
             }
+            5 => {
+                // Mode 5: Bitmap: 160x128 pixels, 16 bpp, allows page flipping
+                let (w, h) = (160, 128);
+                if self.ppu.dispcnt.display_bg[2] && screen_y < h {
+                    let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);
+                    let base_address = page_address + ((w * screen_y) * 2);
+                    let input = &mut self.ppu.vram[base_address..];
+
+                    for screen_x in 0..w {
+                        let color = Color15(input.read_16((screen_x * 2) as u32));
+                        background_buffer[screen_x] = color;
+                    }
+                }
+            }
             m @ _ => panic!("Unsupported video mode {}", m),
         }
 
