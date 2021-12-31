@@ -1,7 +1,9 @@
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 pub struct Color15(pub u16);
 
 impl Color15 {
+    pub const TRANSPARENT: Color15 = Color15(0x8000);
+
     /// Convert the 15-bit color to ARGB.
     pub fn as_argb(self) -> u32 {
         // Source: xbbbbbgggggrrrrr
