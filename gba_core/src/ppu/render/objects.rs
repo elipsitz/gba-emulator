@@ -1,7 +1,8 @@
 use std::hint::unreachable_unchecked;
 
 use super::super::constants::*;
-use super::PALETTE_TABLE_OBJ;
+use super::{ObjectBuffer, PALETTE_TABLE_OBJ};
+use crate::ppu::PIXELS_WIDTH;
 use crate::{mem::Memory, ppu::color::Color15, Gba};
 use bit::BitIndex;
 
@@ -144,7 +145,7 @@ impl Gba {
     }
 
     /// Render a normal (non-affine) object.
-    fn render_normal_object(&mut self, attrs: ObjectAttributes) {
+    fn render_normal_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
         let screen_y = self.ppu.vcount as i32;
         let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
         if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
@@ -158,6 +159,7 @@ impl Gba {
             ColorMode::Bpp4 => attrs.palette_bank() as u32,
             ColorMode::Bpp8 => 0u32,
         };
+        let priority = attrs.priority();
 
         // Y relative to sprite top.
         let mut sprite_y = screen_y - obj_y;
@@ -197,20 +199,18 @@ impl Gba {
                 ColorMode::Bpp8 => self.tile_8bpp_get_index(tile_address, subtile_x, subtile_y),
             };
             let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_OBJ);
-
             if color != Color15::TRANSPARENT {
-                let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * (screen_y as usize))..];
-                output[screen_x as usize] = color.as_argb();
+                buffer[screen_x as usize].set(color, priority);
             }
         }
     }
 
     /// Render the objects in the current scanline.
-    pub(super) fn ppu_render_objects(&mut self) {
+    pub(super) fn ppu_render_objects(&mut self, buffer: &mut ObjectBuffer) {
         for i in 0..128 {
             let attrs = self.get_attributes(i);
             match attrs.object_mode() {
-                ObjectMode::Regular => self.render_normal_object(attrs),
+                ObjectMode::Regular => self.render_normal_object(attrs, buffer),
                 ObjectMode::Hide => {}
                 ObjectMode::Affine | ObjectMode::AffineDouble => {
                     // TODO implement affine objects

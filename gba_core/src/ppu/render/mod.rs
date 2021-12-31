@@ -7,16 +7,41 @@ mod objects;
 const PALETTE_TABLE_BG: u32 = 0x0000;
 const PALETTE_TABLE_OBJ: u32 = 0x0200;
 
+/// Entry in the scanline object buffer.
+/// Used to keep track of objects and priorities as we're rendering a scanline.
+#[derive(Copy, Clone)]
+struct ObjectBufferEntry {
+    pub color: Color15,
+    pub priority: u16,
+}
+
+impl ObjectBufferEntry {
+    fn set(&mut self, color: Color15, priority: u16) {
+        if priority < self.priority {
+            self.color = color;
+            self.priority = priority;
+        }
+    }
+}
+
+impl Default for ObjectBufferEntry {
+    fn default() -> Self {
+        Self {
+            color: Color15::TRANSPARENT,
+            priority: u16::MAX,
+        }
+    }
+}
+
+/// Object scanline buffer.
+type ObjectBuffer = [ObjectBufferEntry; PIXELS_WIDTH];
+
 impl Gba {
     /// Render the current scanline.
     pub(super) fn ppu_render_scanline(&mut self) {
-        // Clear background.
-        let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * (self.ppu.vcount as usize))..];
-        for x in 0..PIXELS_WIDTH {
-            output[x] = 0xFF000000;
-        }
-
-        self.ppu_render_objects();
+        // Render objects.
+        let mut object_buffer = [ObjectBufferEntry::default(); PIXELS_WIDTH];
+        self.ppu_render_objects(&mut object_buffer);
 
         match self.ppu.dispcnt.mode {
             0 => {}
@@ -46,6 +71,25 @@ impl Gba {
                 }
             }
             m @ _ => panic!("Unsupported video mode {}", m),
+        }
+
+        self.compose_scanline(&object_buffer);
+    }
+
+    /// Do final composition of a scanline and write it to the screenbuffer.
+    fn compose_scanline(&mut self, object_buffer: &ObjectBuffer) {
+        let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
+        let backdrop_color = Color15(self.ppu.palette.read_16(0));
+
+        for x in 0..PIXELS_WIDTH {
+            let mut color = backdrop_color;
+
+            // TODO handle backgrounds properly
+            if object_buffer[x].color != Color15::TRANSPARENT {
+                color = object_buffer[x].color;
+            }
+
+            self.ppu.framebuffer[framebuffer_offset + x] = color.as_argb();
         }
     }
 
