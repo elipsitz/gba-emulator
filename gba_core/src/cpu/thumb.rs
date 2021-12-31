@@ -593,7 +593,7 @@ fn thumb_exec_branch_link<const SUFFIX: bool>(s: &mut Gba, inst: u16) -> Instruc
     let immediate = (inst.bit_range(0..11)) as u32;
     if SUFFIX {
         // Second instruction.
-        let new_pc = s.cpu_reg_get(REG_LR) + (immediate << 1);
+        let new_pc = s.cpu_reg_get(REG_LR).wrapping_add(immediate << 1);
         let return_address = (s.cpu_thumb_pc() + 2) | 1;
         s.cpu_reg_set(REG_PC, new_pc);
         s.cpu_reg_set(REG_LR, return_address);
