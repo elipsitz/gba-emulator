@@ -1,6 +1,7 @@
 use std::hint::unreachable_unchecked;
 
 use super::super::constants::*;
+use super::PALETTE_TABLE_OBJ;
 use crate::{mem::Memory, ppu::color::Color15, Gba};
 use bit::BitIndex;
 
@@ -142,79 +143,77 @@ impl Gba {
         ObjectAttributes { raw }
     }
 
+    /// Render a normal (non-affine) object.
+    fn render_normal_object(&mut self, attrs: ObjectAttributes) {
+        let screen_y = self.ppu.vcount as i32;
+        let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
+        if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
+            // Sprite isn't in this scanline.
+            return;
+        }
+        let left = obj_x.max(0).min(PIXELS_WIDTH as i32);
+        let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32);
+
+        let palette_bank = match attrs.color_mode() {
+            ColorMode::Bpp4 => attrs.palette_bank() as u32,
+            ColorMode::Bpp8 => 0u32,
+        };
+
+        // Y relative to sprite top.
+        let mut sprite_y = screen_y - obj_y;
+        if attrs.v_flip() {
+            sprite_y = obj_h - sprite_y - 1
+        }
+
+        // Left-most tile index of the sprite at this scanline.
+        let tile_start = {
+            let tile_y = sprite_y / 8; // Y coordinate (in tiles) we're looking at.
+            let tile_stride = if self.ppu.dispcnt.obj_character_vram_mapping {
+                // 1-D mapping, stride is width in tiles.
+                obj_w / 8
+            } else {
+                // 2-D mapping, stride is 32 tiles.
+                32
+            };
+            attrs.tile_index() + ((tile_y * tile_stride) as usize)
+        };
+        let subtile_y = (sprite_y % 8) as u32; // Y within the current tile.
+
+        for screen_x in left..right {
+            // X relative to sprite left.
+            let mut sprite_x = screen_x - obj_x;
+            if attrs.h_flip() {
+                sprite_x = obj_w - sprite_x - 1;
+            }
+
+            let tile_x = sprite_x / 8; // Tile x within the current sprite.
+            let subtile_x = (sprite_x % 8) as u32; // X within the current tile.
+            let tile_index = (tile_start + (tile_x as usize)) % 1024; // Index of the current tile.
+                                                                      // TODO if using bitmap mode and tile_index < 512, don't draw it.
+
+            let tile_address = (0x10000 + (tile_index * 32)) as u32;
+            let index = match attrs.color_mode() {
+                ColorMode::Bpp4 => self.tile_4bpp_get_index(tile_address, subtile_x, subtile_y),
+                ColorMode::Bpp8 => self.tile_8bpp_get_index(tile_address, subtile_x, subtile_y),
+            };
+            let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_OBJ);
+
+            if color != Color15::TRANSPARENT {
+                let output = &mut self.ppu.framebuffer[(PIXELS_WIDTH * (screen_y as usize))..];
+                output[screen_x as usize] = color.as_argb();
+            }
+        }
+    }
+
     /// Render the objects in the current scanline.
     pub(super) fn ppu_render_objects(&mut self) {
-        let screen_y = self.ppu.vcount as i32;
-
         for i in 0..128 {
             let attrs = self.get_attributes(i);
-            if attrs.object_mode() == ObjectMode::Regular {
-                let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
-                if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
-                    // Sprite isn't in this scanline.
-                    continue;
-                }
-                let left = obj_x.max(0).min(PIXELS_WIDTH as i32);
-                let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32);
-
-                // Scanline of the sprite we're drawing.
-                let sprite_y = if attrs.v_flip() {
-                    obj_h - (screen_y - obj_y) - 1
-                } else {
-                    screen_y - obj_y
-                };
-                // Left-most tile index of the sprite at this scanline.
-                let tile_start = {
-                    let tile_y = sprite_y / 8; // Y coordinate (in tiles) we're looking at.
-                    let tile_stride = if self.ppu.dispcnt.obj_character_vram_mapping {
-                        // 1-D mapping, stride is width in tiles.
-                        obj_w / 8
-                    } else {
-                        // 2-D mapping, stride is 32 tiles.
-                        32
-                    };
-                    attrs.tile_index() + ((tile_y * tile_stride) as usize)
-                };
-                let subtile_y = sprite_y % 8; // Y within the current tile.
-
-                for i in left..right {
-                    // X relative to sprite left.
-                    let sprite_x = if attrs.h_flip() {
-                        obj_w - (i - obj_x) - 1
-                    } else {
-                        i - obj_x
-                    };
-                    let tile_x = sprite_x / 8; // Tile x within the current sprite.
-                    let subtile_x = sprite_x % 8; // X within the current tile.
-                    let tile_index = (tile_start + (tile_x as usize)) % 1024; // Index of the current tile.
-                                                                              // TODO if using bitmap mode and tile_index < 512, don't draw it.
-
-                    let tile_address = 0x10000 + (tile_index * 32);
-                    let tile_pixel = (subtile_y * 8) + subtile_x;
-                    let color = if attrs.color_mode() == ColorMode::Bpp4 {
-                        let address = tile_address + ((tile_pixel as usize) / 2);
-                        let data = self.ppu.vram[address];
-                        let lower = if (tile_pixel & 1) == 0 {
-                            data & 0xF
-                        } else {
-                            data >> 4
-                        };
-                        if lower == 0 {
-                            Color15::TRANSPARENT
-                        } else {
-                            let higher = attrs.palette_bank() << 4;
-                            let color_index = ((lower | higher) as u32) * 2;
-                            Color15(self.ppu.palette.read_16(0x0200 + color_index))
-                        }
-                    } else {
-                        todo!();
-                    };
-
-                    if color != Color15::TRANSPARENT {
-                        let output =
-                            &mut self.ppu.framebuffer[(PIXELS_WIDTH * (screen_y as usize))..];
-                        output[i as usize] = color.as_argb();
-                    }
+            match attrs.object_mode() {
+                ObjectMode::Regular => self.render_normal_object(attrs),
+                ObjectMode::Hide => {}
+                ObjectMode::Affine | ObjectMode::AffineDouble => {
+                    // TODO implement affine objects
                 }
             }
         }
