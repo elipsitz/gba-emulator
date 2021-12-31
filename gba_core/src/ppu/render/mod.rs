@@ -44,7 +44,9 @@ impl Gba {
     pub(super) fn ppu_render_scanline(&mut self) {
         // Render objects.
         let mut object_buffer = [ObjectBufferEntry::default(); PIXELS_WIDTH];
-        self.ppu_render_objects(&mut object_buffer);
+        if self.ppu.dispcnt.display_obj {
+            self.ppu_render_objects(&mut object_buffer);
+        }
 
         // Render backgrounds.
         let screen_y = self.ppu.vcount as usize;
