@@ -1,7 +1,7 @@
 use std::hint::unreachable_unchecked;
 
 use super::super::constants::*;
-use super::{ObjectBuffer, PALETTE_TABLE_OBJ};
+use super::{AffineMatrix, ObjectBuffer, PALETTE_TABLE_OBJ};
 use crate::ppu::{ColorMode, PIXELS_WIDTH};
 use crate::{mem::Memory, ppu::color::Color15, Gba};
 use bit::BitIndex;
@@ -136,6 +136,17 @@ impl Gba {
         ObjectAttributes { raw }
     }
 
+    /// Get an affine matrix by index.
+    fn get_affine_matrix(&mut self, index: usize) -> AffineMatrix {
+        let address = (index as u32) * 32;
+        AffineMatrix {
+            pa: self.ppu.oam.read_16(address + 6) as i16 as i32,
+            pb: self.ppu.oam.read_16(address + 14) as i16 as i32,
+            pc: self.ppu.oam.read_16(address + 22) as i16 as i32,
+            pd: self.ppu.oam.read_16(address + 30) as i16 as i32,
+        }
+    }
+
     /// Render a normal (non-affine) object.
     fn render_normal_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
         let screen_y = self.ppu.vcount as i32;
@@ -197,6 +208,65 @@ impl Gba {
         }
     }
 
+    /// Render an affine object.
+    fn render_affine_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
+        let screen_y = self.ppu.vcount as i32;
+        let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
+        if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
+            // Sprite isn't in this scanline.
+            return;
+        }
+        let matrix = self.get_affine_matrix(attrs.affine_index());
+
+        // Tile mapping stuff.
+        let tile_stride = if self.ppu.dispcnt.obj_character_vram_mapping {
+            // 1-D mapping, stride is width in tiles.
+            (obj_w as u32) / 8
+        } else {
+            // 2-D mapping, stride is 32 tiles.
+            32
+        };
+        let palette_bank = match attrs.color_mode() {
+            ColorMode::Bpp4 => attrs.palette_bank() as u32,
+            ColorMode::Bpp8 => 0u32,
+        };
+        let priority = attrs.priority();
+
+        // TODO handle doublesized.
+        let half_width = obj_w / 2;
+        let half_height = obj_h / 2;
+
+        let left = obj_x.max(0).min(PIXELS_WIDTH as i32);
+        let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32);
+        let iy = screen_y - obj_y - half_height;
+
+        for screen_x in left..right {
+            // Apply the transformation.
+            let ix = screen_x - obj_x - half_width;
+            let texture_x = ((matrix.pa * ix + matrix.pb * iy) >> 8) + half_width;
+            let texture_y = ((matrix.pc * ix + matrix.pd * iy) >> 8) + half_height;
+
+            if texture_x >= 0 && texture_x < obj_w && texture_y >= 0 && texture_y < obj_h {
+                let tile_x = (texture_x / 8) as u32;
+                let tile_y = (texture_y / 8) as u32;
+                let subtile_x = (texture_x % 8) as u32;
+                let subtile_y = (texture_y % 8) as u32;
+
+                let tile_offset = tile_x + (tile_y * tile_stride); // Index within sprite.
+                let tile_index = attrs.tile_index() + (tile_offset as usize);
+                let tile_address = (0x10000 + (tile_index * 32)) as u32;
+                let index = match attrs.color_mode() {
+                    ColorMode::Bpp4 => self.tile_4bpp_get_index(tile_address, subtile_x, subtile_y),
+                    ColorMode::Bpp8 => self.tile_8bpp_get_index(tile_address, subtile_x, subtile_y),
+                };
+                let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_OBJ);
+                if color != Color15::TRANSPARENT {
+                    buffer[screen_x as usize].set(color, priority);
+                }
+            }
+        }
+    }
+
     /// Render the objects in the current scanline.
     pub(super) fn ppu_render_objects(&mut self, buffer: &mut ObjectBuffer) {
         for i in 0..128 {
@@ -205,7 +275,7 @@ impl Gba {
                 ObjectMode::Regular => self.render_normal_object(attrs, buffer),
                 ObjectMode::Hide => {}
                 ObjectMode::Affine | ObjectMode::AffineDouble => {
-                    // TODO implement affine objects
+                    self.render_affine_object(attrs, buffer)
                 }
             }
         }

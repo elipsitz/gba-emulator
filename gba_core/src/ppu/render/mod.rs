@@ -9,6 +9,14 @@ const PALETTE_TABLE_BG: u32 = 0x0000;
 const PALETTE_TABLE_OBJ: u32 = 0x0200;
 const PRIORITY_HIDDEN: u16 = u16::MAX;
 
+/// Affine transformation matrix.
+struct AffineMatrix {
+    pa: i32,
+    pb: i32,
+    pc: i32,
+    pd: i32,
+}
+
 /// Entry in the scanline object buffer.
 /// Used to keep track of objects and priorities as we're rendering a scanline.
 #[derive(Copy, Clone)]
