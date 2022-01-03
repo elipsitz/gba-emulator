@@ -1,6 +1,6 @@
 use crate::{
     scheduler::{Event, PpuEvent},
-    Gba, HEIGHT, WIDTH,
+    Gba, InterruptKind, HEIGHT, WIDTH,
 };
 use color::Color15;
 use registers::*;
@@ -100,6 +100,9 @@ impl Gba {
 
     fn ppu_on_end_hdraw(&mut self) -> (PpuEvent, usize) {
         self.ppu.dispstat.hblank = true;
+        if self.ppu.dispstat.hblank_irq {
+            self.interrupt_raise(InterruptKind::HBlank);
+        }
 
         (PpuEvent::EndHBlank, CYCLES_HBLANK)
     }
@@ -112,6 +115,9 @@ impl Gba {
         if (self.ppu.vcount as usize) == PIXELS_HEIGHT {
             // Just entered vblank.
             self.ppu.dispstat.vblank = true;
+            if self.ppu.dispstat.vblank_irq {
+                self.interrupt_raise(InterruptKind::VBlank);
+            }
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         } else {
             // Draw the next scanline (which is visible).

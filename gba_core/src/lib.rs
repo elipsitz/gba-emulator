@@ -12,6 +12,7 @@ mod scheduler;
 use bus::Bus;
 use cpu::Cpu;
 pub use gba::{Gba, HEIGHT, WIDTH};
+use interrupt::InterruptKind;
 use io::Io;
 pub use keypad::KeypadState;
 use mem::{Addr, Memory};
