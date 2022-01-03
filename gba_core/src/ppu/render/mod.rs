@@ -2,6 +2,7 @@ use super::constants::*;
 use super::Color15;
 use crate::{mem::Memory, Gba};
 
+mod backgrounds;
 mod objects;
 
 const PALETTE_TABLE_BG: u32 = 0x0000;
@@ -52,7 +53,13 @@ impl Gba {
         let screen_y = self.ppu.vcount as usize;
         let mut background_buffer = [Color15::TRANSPARENT; PIXELS_WIDTH];
         match self.ppu.dispcnt.mode {
-            0 => {}
+            0 => {
+                // Mode 0: Four regular tilemaps.
+                // TODO render multiple backgrounds.
+                if self.ppu.dispcnt.display_bg[0] {
+                    self.ppu_render_background(0, &mut background_buffer);
+                }
+            }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
                 if self.ppu.dispcnt.display_bg[2] {

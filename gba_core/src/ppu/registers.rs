@@ -110,6 +110,12 @@ impl DisplayStatus {
 pub struct BackgroundSize(u16);
 
 impl BackgroundSize {
+    /// Returns the size of the background in pixels.
+    pub fn pixels(self, affine: bool) -> (usize, usize) {
+        let (w, h) = self.tiles(affine);
+        (w * 8, h * 8)
+    }
+
     /// Returns the size of the background in tiles.
     pub fn tiles(self, affine: bool) -> (usize, usize) {
         match (affine, self.0) {
@@ -127,6 +133,7 @@ impl BackgroundSize {
 }
 
 /// BGxCNT - Background Control
+#[derive(Copy, Clone)]
 pub struct BackgroundControl {
     /// BG Priority
     pub priority: u16,
