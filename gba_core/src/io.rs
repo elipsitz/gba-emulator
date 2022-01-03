@@ -1,11 +1,14 @@
 use crate::Gba;
 
 /// State for memory mapped IO controller.
-pub struct Io {}
+pub struct Io {
+    /// Value of the KEYCNT (keypad control) register.
+    pub keycnt: u16,
+}
 
 impl Io {
     pub fn new() -> Io {
-        Io {}
+        Io { keycnt: 0 }
     }
 }
 
@@ -16,6 +19,7 @@ impl Gba {
             REG_DISPSTAT => self.ppu.dispstat.read(),
             REG_VCOUNT => self.ppu.vcount as u16,
             REG_KEYINPUT => self.keypad_state.into(),
+            REG_KEYCNT => self.io.keycnt,
             REG_BG0CNT => self.ppu.bgcnt[0].read(),
             REG_BG1CNT => self.ppu.bgcnt[1].read(),
             REG_BG2CNT => self.ppu.bgcnt[2].read(),
@@ -31,6 +35,7 @@ impl Gba {
         match addr {
             REG_DISPCNT => self.ppu.dispcnt.write(value),
             REG_DISPSTAT => self.ppu.dispstat.write(value),
+            REG_KEYCNT => self.io.keycnt = value,
             REG_BG0CNT => self.ppu.bgcnt[0].write(value),
             REG_BG1CNT => self.ppu.bgcnt[1].write(value),
             REG_BG2CNT => self.ppu.bgcnt[2].write(value),
@@ -84,6 +89,7 @@ pub const REG_DISPCNT: u32 = 0x0400_0000;
 pub const REG_DISPSTAT: u32 = 0x0400_0004;
 pub const REG_VCOUNT: u32 = 0x0400_0006;
 pub const REG_KEYINPUT: u32 = 0x0400_0130;
+pub const REG_KEYCNT: u32 = 0x0400_0132;
 pub const REG_BG0CNT: u32 = 0x0400_0008;
 pub const REG_BG1CNT: u32 = 0x0400_000A;
 pub const REG_BG2CNT: u32 = 0x0400_000C;

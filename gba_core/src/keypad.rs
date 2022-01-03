@@ -1,3 +1,7 @@
+use bit::BitIndex;
+
+use crate::{Gba, InterruptKind};
+
 /// Keypad State
 #[derive(Copy, Clone, Debug)]
 pub struct KeypadState {
@@ -43,5 +47,34 @@ impl Into<u16> for KeypadState {
             | ((!self.down as u16) << 7)
             | ((!self.r as u16) << 8)
             | ((!self.l as u16) << 9)
+    }
+}
+
+impl Gba {
+    /// Set the current keypad state.
+    pub fn set_keypad_state(&mut self, state: KeypadState) {
+        self.keypad_state = state;
+
+        // Check for interrupt.
+        let keycnt = self.io.keycnt;
+        let irq_enabled = self.io.keycnt.bit(14);
+        if irq_enabled {
+            // False: logical OR. True: logical AND.
+            let irq_condition = self.io.keycnt.bit(15);
+            let pressed = Into::<u16>::into(state) & 0x3FF;
+            let mask = keycnt & 0x3FF;
+            if mask != 0 {
+                let fire = if irq_condition {
+                    // Logical AND: all masked buttons must be pressed.
+                    (mask & pressed) == mask
+                } else {
+                    // Logical OR: any of the masked buttons must be pressed.
+                    (mask & pressed) != 0
+                };
+                if fire {
+                    self.interrupt_raise(InterruptKind::Keypad);
+                }
+            }
+        }
     }
 }

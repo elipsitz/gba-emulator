@@ -111,9 +111,4 @@ impl Gba {
     pub fn framebuffer(&self) -> &[u32] {
         &self.ppu.framebuffer
     }
-
-    /// Set the current keypad state.
-    pub fn set_keypad_state(&mut self, state: KeypadState) {
-        self.keypad_state = state;
-    }
 }
