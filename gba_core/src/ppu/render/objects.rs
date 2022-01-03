@@ -212,7 +212,12 @@ impl Gba {
     fn render_affine_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
         let screen_y = self.ppu.vcount as i32;
         let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
-        if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
+        let (box_w, box_h) = if attrs.object_mode() == ObjectMode::Affine {
+            (obj_w, obj_h)
+        } else {
+            (obj_w * 2, obj_h * 2)
+        };
+        if screen_y < obj_y || screen_y >= (obj_y + box_h) {
             // Sprite isn't in this scanline.
             return;
         }
@@ -232,19 +237,18 @@ impl Gba {
         };
         let priority = attrs.priority();
 
-        // TODO handle doublesized.
-        let half_width = obj_w / 2;
-        let half_height = obj_h / 2;
+        let half_width = box_w / 2;
+        let half_height = box_h / 2;
 
         let left = obj_x.max(0).min(PIXELS_WIDTH as i32);
-        let right = (obj_x + obj_w).max(0).min(PIXELS_WIDTH as i32);
+        let right = (obj_x + box_w).max(0).min(PIXELS_WIDTH as i32);
         let iy = screen_y - obj_y - half_height;
 
         for screen_x in left..right {
             // Apply the transformation.
             let ix = screen_x - obj_x - half_width;
-            let texture_x = ((matrix.pa * ix + matrix.pb * iy) >> 8) + half_width;
-            let texture_y = ((matrix.pc * ix + matrix.pd * iy) >> 8) + half_height;
+            let texture_x = ((matrix.pa * ix + matrix.pb * iy) >> 8) + (obj_w / 2);
+            let texture_y = ((matrix.pc * ix + matrix.pd * iy) >> 8) + (obj_h / 2);
 
             if texture_x >= 0 && texture_x < obj_w && texture_y >= 0 && texture_y < obj_h {
                 let tile_x = (texture_x / 8) as u32;
