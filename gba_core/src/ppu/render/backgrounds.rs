@@ -29,8 +29,12 @@ impl ScreenEntryRegular {
 }
 
 impl Gba {
-    /// Render a regular (non-affine) background.
-    fn render_regular_background(&mut self, index: usize, buffer: &mut BackgroundBuffer) {
+    /// Render a regular (non-affine) background in the current scanline.
+    pub(super) fn ppu_render_regular_background(
+        &mut self,
+        index: usize,
+        buffer: &mut BackgroundBuffer,
+    ) {
         let off_x = self.ppu.bg_hofs[index];
         let off_y = self.ppu.bg_vofs[index];
         let control = self.ppu.bgcnt[index];
@@ -94,11 +98,5 @@ impl Gba {
             let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_BG);
             buffer[screen_x as usize] = color;
         }
-    }
-
-    /// Render the background in the current scanline.
-    pub(super) fn ppu_render_background(&mut self, index: usize, buffer: &mut BackgroundBuffer) {
-        assert!(self.ppu.dispcnt.mode == 0);
-        self.render_regular_background(index, buffer);
     }
 }

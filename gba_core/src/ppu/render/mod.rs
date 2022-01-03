@@ -51,14 +51,34 @@ impl Gba {
 
         // Render backgrounds.
         let screen_y = self.ppu.vcount as usize;
-        let mut background_buffer = [Color15::TRANSPARENT; PIXELS_WIDTH];
+        let mut background_buffers = [[Color15::TRANSPARENT; PIXELS_WIDTH]; 4];
+        let mut num_backgrounds = 0;
         match self.ppu.dispcnt.mode {
             0 => {
                 // Mode 0: Four regular tilemaps.
-                // TODO render multiple backgrounds.
-                if self.ppu.dispcnt.display_bg[0] {
-                    self.ppu_render_background(0, &mut background_buffer);
+                for i in 0..4 {
+                    if self.ppu.dispcnt.display_bg[i] {
+                        let buffer = &mut background_buffers[num_backgrounds];
+                        self.ppu_render_regular_background(i, buffer);
+                        num_backgrounds += 1;
+                    }
                 }
+            }
+            1 => {
+                // Mode 1: Two regular tilemaps (0, 1), one affine (2).
+                for i in 0..2 {
+                    if self.ppu.dispcnt.display_bg[i] {
+                        let buffer = &mut background_buffers[num_backgrounds];
+                        self.ppu_render_regular_background(i, buffer);
+                        num_backgrounds += 1;
+                    }
+                }
+                // TODO implement affine tilemaps.
+            }
+            2 => {
+                // Mode 2: Two affine tilemaps (2, 3).
+                // TODO implement affine tilemaps.
+                num_backgrounds = 0;
             }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
@@ -66,8 +86,9 @@ impl Gba {
                     let input = &mut self.ppu.vram[(PIXELS_WIDTH * screen_y * 2)..];
                     for screen_x in 0..PIXELS_WIDTH {
                         let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffer[screen_x] = color;
+                        background_buffers[0][screen_x] = color;
                     }
+                    num_backgrounds += 1;
                 }
             }
             4 => {
@@ -78,8 +99,9 @@ impl Gba {
                     for screen_x in 0..PIXELS_WIDTH {
                         let index = self.ppu.vram[base_address + screen_x];
                         let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
-                        background_buffer[screen_x] = color;
+                        background_buffers[0][screen_x] = color;
                     }
+                    num_backgrounds += 1;
                 }
             }
             5 => {
@@ -92,31 +114,33 @@ impl Gba {
 
                     for screen_x in 0..w {
                         let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffer[screen_x] = color;
+                        background_buffers[0][screen_x] = color;
                     }
+                    num_backgrounds += 1;
                 }
             }
             m @ _ => panic!("Unsupported video mode {}", m),
         }
 
-        self.compose_scanline(&object_buffer, &background_buffer);
+        self.compose_scanline(&object_buffer, &background_buffers[..num_backgrounds]);
     }
 
     /// Do final composition of a scanline and write it to the screenbuffer.
-    fn compose_scanline(
-        &mut self,
-        object_buffer: &ObjectBuffer,
-        background_buffer: &BackgroundBuffer,
-    ) {
+    fn compose_scanline(&mut self, object_buffer: &ObjectBuffer, backgrounds: &[BackgroundBuffer]) {
         let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
         let backdrop_color = Color15(self.ppu.palette.read_16(0));
+
+        // XXX: make sure earlier backgrounds go over later backgrounds.
+        // TODO: implement more complex object/background priority interactions.
 
         for x in 0..PIXELS_WIDTH {
             let mut color = backdrop_color;
 
             // TODO handle backgrounds / object priority properly
-            if background_buffer[x] != Color15::TRANSPARENT {
-                color = background_buffer[x];
+            for background in backgrounds.iter().rev() {
+                if background[x] != Color15::TRANSPARENT {
+                    color = background[x];
+                }
             }
 
             if object_buffer[x].color != Color15::TRANSPARENT {
