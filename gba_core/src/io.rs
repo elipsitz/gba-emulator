@@ -20,6 +20,9 @@ impl Gba {
             REG_BG1CNT => self.ppu.bgcnt[1].read(),
             REG_BG2CNT => self.ppu.bgcnt[2].read(),
             REG_BG3CNT => self.ppu.bgcnt[3].read(),
+            REG_IME => self.interrupt.global_enabled as u16,
+            REG_IE => self.interrupt.enabled,
+            REG_IF => self.interrupt.pending,
             _ => 0,
         }
     }
@@ -40,6 +43,9 @@ impl Gba {
             REG_BG2VOFS => self.ppu.bg_vofs[2] = value & 0x1FF,
             REG_BG3HOFS => self.ppu.bg_hofs[3] = value & 0x1FF,
             REG_BG3VOFS => self.ppu.bg_vofs[3] = value & 0x1FF,
+            REG_IME => self.interrupt.global_enabled = value & 1 == 1,
+            REG_IE => self.interrupt.enabled = value & 0x3FFF,
+            REG_IF => self.interrupt_reg_if_write(value),
             _ => {}
         }
     }
@@ -90,3 +96,6 @@ pub const REG_BG2HOFS: u32 = 0x0400_0018;
 pub const REG_BG2VOFS: u32 = 0x0400_001A;
 pub const REG_BG3HOFS: u32 = 0x0400_001C;
 pub const REG_BG3VOFS: u32 = 0x0400_001E;
+pub const REG_IME: u32 = 0x0400_0208;
+pub const REG_IE: u32 = 0x0400_0200;
+pub const REG_IF: u32 = 0x0400_0202;

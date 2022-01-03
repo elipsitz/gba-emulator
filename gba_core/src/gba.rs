@@ -1,4 +1,4 @@
-use crate::{Bus, Cpu, Event, Io, KeypadState, Ppu, Rom, Scheduler};
+use crate::{interrupt::InterruptManager, Bus, Cpu, Event, Io, KeypadState, Ppu, Rom, Scheduler};
 
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
@@ -20,6 +20,9 @@ pub struct Gba {
 
     /// PPU state.
     pub(crate) ppu: Ppu,
+
+    /// Interrupt manager state.
+    pub(crate) interrupt: InterruptManager,
 
     /// The 16 KiB BIOS ROM.
     pub(crate) bios_rom: Box<[u8]>,
@@ -49,6 +52,7 @@ impl Gba {
             scheduler: Scheduler::new(),
             io: Io::new(),
             ppu: Ppu::new(),
+            interrupt: InterruptManager::new(),
             bios_rom,
             cart_rom,
             ewram: [0; 256 * 1024],
@@ -72,6 +76,12 @@ impl Gba {
 
         'outer: loop {
             while self.scheduler.timestamp() < self.scheduler.peek_deadline().unwrap() {
+                // Check for IRQ.
+                // TODO handle low power state (until interrupt).
+                if self.interrupt_pending() {
+                    self.cpu_irq();
+                }
+
                 self.cpu_step();
             }
 

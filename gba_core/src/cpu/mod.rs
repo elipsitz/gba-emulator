@@ -323,4 +323,22 @@ impl Gba {
         writeln!(s, "cpsr: {:08X}", cspr).unwrap();
         s
     }
+
+    /// Get the PC of the instruction currently being executed (or about to be).
+    fn cpu_pc(&self) -> u32 {
+        match self.cpu.cpsr.execution_state {
+            CpuExecutionState::Thumb => self.cpu_thumb_pc(),
+            CpuExecutionState::Arm => self.cpu_arm_pc(),
+        }
+    }
+
+    /// Trigger an IRQ (if enabled).
+    pub(crate) fn cpu_irq(&mut self) {
+        if !self.cpu.cpsr.interrupt_i {
+            // PSR I bit clear: IRQs are enabled.
+            // LR = PC of next instruction to be executed + 4.
+            let return_address = self.cpu_pc() + 4;
+            self.cpu_exception(exception::ExceptionType::Irq, return_address);
+        }
+    }
 }

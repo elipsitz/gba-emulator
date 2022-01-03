@@ -1,6 +1,7 @@
 mod bus;
 mod cpu;
 mod gba;
+mod interrupt;
 mod io;
 mod keypad;
 mod mem;
