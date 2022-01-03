@@ -7,6 +7,7 @@ mod objects;
 
 const PALETTE_TABLE_BG: u32 = 0x0000;
 const PALETTE_TABLE_OBJ: u32 = 0x0200;
+const PRIORITY_HIDDEN: u16 = u16::MAX;
 
 /// Entry in the scanline object buffer.
 /// Used to keep track of objects and priorities as we're rendering a scanline.
@@ -52,15 +53,17 @@ impl Gba {
         // Render backgrounds.
         let screen_y = self.ppu.vcount as usize;
         let mut background_buffers = [[Color15::TRANSPARENT; PIXELS_WIDTH]; 4];
-        let mut num_backgrounds = 0;
+        let mut background_indices = [0usize; 4];
+        let mut background_count = 0;
         match self.ppu.dispcnt.mode {
             0 => {
                 // Mode 0: Four regular tilemaps.
                 for i in 0..4 {
                     if self.ppu.dispcnt.display_bg[i] {
-                        let buffer = &mut background_buffers[num_backgrounds];
+                        let buffer = &mut background_buffers[i];
                         self.ppu_render_regular_background(i, buffer);
-                        num_backgrounds += 1;
+                        background_indices[background_count] = i;
+                        background_count += 1;
                     }
                 }
             }
@@ -68,9 +71,10 @@ impl Gba {
                 // Mode 1: Two regular tilemaps (0, 1), one affine (2).
                 for i in 0..2 {
                     if self.ppu.dispcnt.display_bg[i] {
-                        let buffer = &mut background_buffers[num_backgrounds];
+                        let buffer = &mut background_buffers[i];
                         self.ppu_render_regular_background(i, buffer);
-                        num_backgrounds += 1;
+                        background_indices[background_count] = i;
+                        background_count += 1;
                     }
                 }
                 // TODO implement affine tilemaps.
@@ -78,7 +82,7 @@ impl Gba {
             2 => {
                 // Mode 2: Two affine tilemaps (2, 3).
                 // TODO implement affine tilemaps.
-                num_backgrounds = 0;
+                background_count = 0;
             }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
@@ -86,9 +90,10 @@ impl Gba {
                     let input = &mut self.ppu.vram[(PIXELS_WIDTH * screen_y * 2)..];
                     for screen_x in 0..PIXELS_WIDTH {
                         let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffers[0][screen_x] = color;
+                        background_buffers[2][screen_x] = color;
                     }
-                    num_backgrounds += 1;
+                    background_indices[0] = 2;
+                    background_count = 1;
                 }
             }
             4 => {
@@ -99,9 +104,10 @@ impl Gba {
                     for screen_x in 0..PIXELS_WIDTH {
                         let index = self.ppu.vram[base_address + screen_x];
                         let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
-                        background_buffers[0][screen_x] = color;
+                        background_buffers[2][screen_x] = color;
                     }
-                    num_backgrounds += 1;
+                    background_indices[0] = 2;
+                    background_count = 1;
                 }
             }
             5 => {
@@ -114,36 +120,51 @@ impl Gba {
 
                     for screen_x in 0..w {
                         let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffers[0][screen_x] = color;
+                        background_buffers[2][screen_x] = color;
                     }
-                    num_backgrounds += 1;
+                    background_indices[0] = 2;
+                    background_count = 1;
                 }
             }
             m @ _ => panic!("Unsupported video mode {}", m),
         }
 
-        self.compose_scanline(&object_buffer, &background_buffers[..num_backgrounds]);
+        self.compose_scanline(
+            &object_buffer,
+            &background_buffers,
+            &mut background_indices[..background_count],
+        );
     }
 
     /// Do final composition of a scanline and write it to the screenbuffer.
-    fn compose_scanline(&mut self, object_buffer: &ObjectBuffer, backgrounds: &[BackgroundBuffer]) {
+    fn compose_scanline(
+        &mut self,
+        object_buffer: &ObjectBuffer,
+        background_buffers: &[BackgroundBuffer; 4],
+        background_indices: &mut [usize],
+    ) {
         let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
         let backdrop_color = Color15(self.ppu.palette.read_16(0));
 
-        // XXX: make sure earlier backgrounds go over later backgrounds.
-        // TODO: implement more complex object/background priority interactions.
+        // Sort backgrounds.
+        background_indices.sort_by_key(|&x| self.ppu.bgcnt[x].priority);
 
+        // TODO: implement more complex object/background priority interactions.
         for x in 0..PIXELS_WIDTH {
             let mut color = backdrop_color;
 
-            // TODO handle backgrounds / object priority properly
-            for background in backgrounds.iter().rev() {
-                if background[x] != Color15::TRANSPARENT {
-                    color = background[x];
-                }
+            // Find first non-transparent background layer.
+            let bg_layer = background_indices
+                .iter()
+                .filter(|&&i| !background_buffers[i][x].transparent())
+                .next();
+            let bg_priority = bg_layer.map_or(PRIORITY_HIDDEN, |&i| self.ppu.bgcnt[i].priority);
+            if let Some(&layer) = bg_layer {
+                color = background_buffers[layer][x];
             }
 
-            if object_buffer[x].color != Color15::TRANSPARENT {
+            // Add object color if it's not transparent.
+            if !object_buffer[x].color.transparent() && object_buffer[x].priority <= bg_priority {
                 color = object_buffer[x].color;
             }
 

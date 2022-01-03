@@ -13,4 +13,19 @@ impl Color15 {
         let b = (((self.0 >> 10) & 0b11111) as u32) << 3;
         0xFF00_0000 | r | g | b
     }
+
+    /// Returns whether this color is transparent.
+    pub fn transparent(self) -> bool {
+        self == Color15::TRANSPARENT
+    }
+
+    /// Layer another color on top of this one.
+    /// Returns the other color if it is opaque, otherwise this color
+    pub fn and(self, other: Color15) -> Color15 {
+        if other == Color15::TRANSPARENT {
+            self
+        } else {
+            other
+        }
+    }
 }
