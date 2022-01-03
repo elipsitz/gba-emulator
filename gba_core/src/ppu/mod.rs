@@ -87,6 +87,14 @@ impl Gba {
             .push_event(Event::Ppu(PpuEvent::EndHDraw), CYCLES_HDRAW);
     }
 
+    fn update_vcount(&mut self, new_vcount: u16) {
+        self.ppu.vcount = new_vcount;
+        self.ppu.dispstat.vcounter = self.ppu.dispstat.vcount_setting == new_vcount;
+        if self.ppu.dispstat.vcounter_irq && self.ppu.dispstat.vcounter {
+            self.interrupt_raise(InterruptKind::VCount);
+        }
+    }
+
     pub fn ppu_on_event(&mut self, event: PpuEvent, lateness: usize) {
         let (next_event, deadline) = match event {
             PpuEvent::EndHDraw => self.ppu_on_end_hdraw(),
@@ -110,7 +118,7 @@ impl Gba {
     fn ppu_on_end_hblank(&mut self) -> (PpuEvent, usize) {
         // Increment the scanline.
         self.ppu.dispstat.hblank = false;
-        self.ppu.vcount += 1;
+        self.update_vcount(self.ppu.vcount + 1);
 
         if (self.ppu.vcount as usize) == PIXELS_HEIGHT {
             // Just entered vblank.
@@ -121,6 +129,8 @@ impl Gba {
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         } else {
             // Draw the next scanline (which is visible).
+            // XXX: I think we need to fire (and process) vcount interrupt before rendering line.
+            // See the red line when vcount has priority in tonc interrupt demo.
             self.ppu_render_scanline();
 
             (PpuEvent::EndHDraw, CYCLES_HDRAW)
@@ -129,6 +139,9 @@ impl Gba {
 
     fn ppu_on_end_vblank_hdraw(&mut self) -> (PpuEvent, usize) {
         self.ppu.dispstat.hblank = true;
+        if self.ppu.dispstat.hblank_irq {
+            self.interrupt_raise(InterruptKind::HBlank);
+        }
 
         (PpuEvent::EndVBlankHBlank, CYCLES_HBLANK)
     }
@@ -136,12 +149,12 @@ impl Gba {
     fn ppu_on_end_vblank_hblank(&mut self) -> (PpuEvent, usize) {
         // Increment the scanline.
         self.ppu.dispstat.hblank = false;
-        self.ppu.vcount += 1;
+        let new_vcount = self.ppu.vcount + 1;
 
-        if (self.ppu.vcount as usize) == (PIXELS_HEIGHT + SCANLINES_VBLANK) {
+        if (new_vcount as usize) == (PIXELS_HEIGHT + SCANLINES_VBLANK) {
             // Finished vblank.
             self.ppu.dispstat.vblank = false;
-            self.ppu.vcount = 0;
+            self.update_vcount(0);
             self.ppu.frame += 1;
 
             // Draw the first scanline.
@@ -150,6 +163,7 @@ impl Gba {
             (PpuEvent::EndHDraw, CYCLES_HDRAW)
         } else {
             // Another vblank scanline.
+            self.update_vcount(new_vcount);
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         }
     }
