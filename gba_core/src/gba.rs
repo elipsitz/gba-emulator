@@ -1,4 +1,7 @@
-use crate::{interrupt::InterruptManager, Bus, Cpu, Event, Io, KeypadState, Ppu, Rom, Scheduler};
+use crate::{
+    interrupt::InterruptManager, io::CpuPowerState, Bus, Cpu, Event, Io, KeypadState, Ppu, Rom,
+    Scheduler,
+};
 
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
@@ -76,13 +79,22 @@ impl Gba {
 
         'outer: loop {
             while self.scheduler.timestamp() < self.scheduler.peek_deadline().unwrap() {
-                // Check for IRQ.
-                // TODO handle low power state (until interrupt).
-                if self.interrupt_pending() {
-                    self.cpu_irq();
-                }
+                if self.io.power_state == CpuPowerState::Normal {
+                    // Check for IRQ.
+                    if self.interrupt_pending() {
+                        self.cpu_irq();
+                    }
 
-                self.cpu_step();
+                    self.cpu_step();
+                } else {
+                    // CPU is in halt state. Skip to the next interrupt.
+                    if self.interrupt_pending() {
+                        self.io.power_state = CpuPowerState::Normal;
+                    } else {
+                        self.scheduler.skip_to_next_event();
+                        break;
+                    }
+                }
             }
 
             // Handle any events.

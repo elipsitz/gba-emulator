@@ -1,14 +1,31 @@
+use bit::BitIndex;
+
 use crate::Gba;
 
 /// State for memory mapped IO controller.
 pub struct Io {
     /// Value of the KEYCNT (keypad control) register.
     pub keycnt: u16,
+    /// Current CPU power state.
+    pub power_state: CpuPowerState,
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum CpuPowerState {
+    /// Regular power state, running as usual.
+    Normal,
+    /// Halted, waiting for an interrupt to occur.
+    Halted,
+    /// Stopped, super low power state.
+    Stopped,
 }
 
 impl Io {
     pub fn new() -> Io {
-        Io { keycnt: 0 }
+        Io {
+            keycnt: 0,
+            power_state: CpuPowerState::Normal,
+        }
     }
 }
 
@@ -74,14 +91,26 @@ impl Gba {
     }
 
     pub fn io_write_8(&mut self, addr: u32, value: u8) {
-        let full = self.io_read_16(addr & !1);
-        let writeback = if addr & 1 == 0 {
-            // Replace the low byte.
-            (full & 0xFF00) | (value as u16)
-        } else {
-            (full & 0x00FF) | ((value as u16) << 8)
-        };
-        self.io_write_16(addr & !1, writeback);
+        match addr {
+            REG_HALTCNT => {
+                if value.bit(7) {
+                    self.io.power_state = CpuPowerState::Stopped;
+                    todo!("HALTCNT = STOP not supported");
+                } else {
+                    self.io.power_state = CpuPowerState::Halted;
+                }
+            }
+            _ => {
+                let full = self.io_read_16(addr & !1);
+                let writeback = if addr & 1 == 0 {
+                    // Replace the low byte.
+                    (full & 0xFF00) | (value as u16)
+                } else {
+                    (full & 0x00FF) | ((value as u16) << 8)
+                };
+                self.io_write_16(addr & !1, writeback);
+            }
+        }
     }
 }
 
@@ -105,3 +134,4 @@ pub const REG_BG3VOFS: u32 = 0x0400_001E;
 pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;
 pub const REG_IF: u32 = 0x0400_0202;
+pub const REG_HALTCNT: u32 = 0x0400_0301;

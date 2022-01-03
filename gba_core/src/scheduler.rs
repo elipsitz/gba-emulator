@@ -51,6 +51,12 @@ impl Scheduler {
         self.time += delta;
     }
 
+    /// Advance the internal timestamp to the timestamp of the next event.
+    pub fn skip_to_next_event(&mut self) {
+        let next_deadline = self.peek_deadline().unwrap();
+        self.time = self.time.max(next_deadline);
+    }
+
     /// Get the timestamp of the next event's deadline (or None if there are no events).
     pub fn peek_deadline(&self) -> Option<usize> {
         self.queue.peek().map(|x| x.deadline)
