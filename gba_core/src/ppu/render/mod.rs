@@ -3,6 +3,7 @@ use super::Color15;
 use crate::{mem::Memory, Gba};
 
 mod backgrounds;
+mod bitmap;
 mod objects;
 
 const PALETTE_TABLE_BG: u32 = 0x0000;
@@ -59,7 +60,6 @@ impl Gba {
         }
 
         // Render backgrounds.
-        let screen_y = self.ppu.vcount as usize;
         let mut background_buffers = [[Color15::TRANSPARENT; PIXELS_WIDTH]; 4];
         let mut background_indices = [0usize; 4];
         let mut background_count = 0;
@@ -105,45 +105,27 @@ impl Gba {
             }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
-                // TODO handle translation using affine offset registers
                 if self.ppu.dispcnt.display_bg[2] {
-                    let input = &mut self.ppu.vram[(PIXELS_WIDTH * screen_y * 2)..];
-                    for screen_x in 0..PIXELS_WIDTH {
-                        let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffers[2][screen_x] = color;
-                    }
+                    let buffer = &mut background_buffers[2];
+                    self.ppu_render_bitmap_3(buffer);
                     background_indices[0] = 2;
                     background_count = 1;
                 }
             }
             4 => {
                 // Mode 4: Bitmap: 240x160, 8 bpp (palette) (allows page flipping)
-                // TODO handle translation using affine offset registers
                 if self.ppu.dispcnt.display_bg[2] {
-                    let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);
-                    let base_address = page_address + (PIXELS_WIDTH * screen_y);
-                    for screen_x in 0..PIXELS_WIDTH {
-                        let index = self.ppu.vram[base_address + screen_x];
-                        let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
-                        background_buffers[2][screen_x] = color;
-                    }
+                    let buffer = &mut background_buffers[2];
+                    self.ppu_render_bitmap_4(buffer);
                     background_indices[0] = 2;
                     background_count = 1;
                 }
             }
             5 => {
                 // Mode 5: Bitmap: 160x128 pixels, 16 bpp, allows page flipping
-                // TODO handle translation using affine offset registers
-                let (w, h) = (160, 128);
-                if self.ppu.dispcnt.display_bg[2] && screen_y < h {
-                    let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);
-                    let base_address = page_address + ((w * screen_y) * 2);
-                    let input = &mut self.ppu.vram[base_address..];
-
-                    for screen_x in 0..w {
-                        let color = Color15(input.read_16((screen_x * 2) as u32));
-                        background_buffers[2][screen_x] = color;
-                    }
+                if self.ppu.dispcnt.display_bg[2] {
+                    let buffer = &mut background_buffers[2];
+                    self.ppu_render_bitmap_5(buffer);
                     background_indices[0] = 2;
                     background_count = 1;
                 }
