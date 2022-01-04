@@ -2,7 +2,7 @@ const WIDTH: usize = 240;
 const HEIGHT: usize = 160;
 
 use gba_core::{Gba, KeypadState};
-use minifb::{Key, Window, WindowOptions};
+use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::time::{Duration, Instant};
 
 fn make_gba() -> Gba {
@@ -42,12 +42,22 @@ fn main() {
     // Limit to ~60 FPS.
     window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
 
+    let mut paused = false;
+    let mut single_step = false;
+
     let mut frame_counter = 0;
     let mut last_fps_update = Instant::now();
     loop {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             // User wants to exit.
             break;
+        }
+        if window.is_key_pressed(Key::Space, KeyRepeat::No) {
+            paused = !paused;
+        }
+        if window.is_key_pressed(Key::Tab, KeyRepeat::Yes) {
+            paused = true;
+            single_step = true;
         }
 
         // Get keypad input.
@@ -64,15 +74,21 @@ fn main() {
         keypad.l = window.is_key_down(Key::A);
         gba.set_keypad_state(keypad);
 
-        // Run emulator for a frame.
-        gba.emulate_frame();
-        frame_counter += 1;
+        if !paused || single_step {
+            single_step = false;
 
-        // Update window with the framebuffer.
-        let framebuffer = gba.framebuffer();
-        window
-            .update_with_buffer(framebuffer, WIDTH, HEIGHT)
-            .unwrap();
+            // Run emulator for a frame.
+            gba.emulate_frame();
+            frame_counter += 1;
+
+            // Update window with the framebuffer.
+            let framebuffer = gba.framebuffer();
+            window
+                .update_with_buffer(framebuffer, WIDTH, HEIGHT)
+                .unwrap();
+        } else {
+            window.update();
+        }
 
         // Update FPS counter.
         let elapsed = Instant::now() - last_fps_update;
