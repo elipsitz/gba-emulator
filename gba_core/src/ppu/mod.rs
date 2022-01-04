@@ -83,6 +83,15 @@ impl Ppu {
             oam: vec![0; 1024].into_boxed_slice(),
         }
     }
+
+    pub fn skip_bios(&mut self) {
+        for i in 0..2 {
+            self.bg_affine[i].pa = 0x100;
+            self.bg_affine[i].pb = 0;
+            self.bg_affine[i].pc = 0;
+            self.bg_affine[i].pd = 0x100;
+        }
+    }
 }
 
 impl Gba {

@@ -69,6 +69,7 @@ impl Gba {
 
     pub fn skip_bios(&mut self) {
         self.cpu.skip_bios();
+        self.ppu.skip_bios();
     }
 
     /// Run the emulator for at least the given number of cycles.
