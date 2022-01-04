@@ -217,4 +217,31 @@ impl Gba {
             Color15(raw & 0x7FFF)
         }
     }
+
+    /// Do the affine background transformation for the given background
+    /// for the current scanline and given screen x position.
+    ///
+    /// Returns the texture coordinate, or None if it's out of bounds.
+    fn bg_affine_transform(
+        &self,
+        index: usize,
+        screen_x: i32,
+        w: i32,
+        h: i32,
+    ) -> Option<(u32, u32)> {
+        let affine = self.ppu.bg_affine[index - 2];
+        let (dx, dy) = (affine.internal_dx, affine.internal_dy);
+
+        let tx = (dx + (screen_x as i32) * (affine.pa as i32)) >> 8;
+        let ty = (dy + (screen_x as i32) * (affine.pc as i32)) >> 8;
+        if tx < 0 || tx >= w || ty < 0 || ty >= h {
+            if self.ppu.bgcnt[index].affine_wrap {
+                Some((tx.rem_euclid(w) as u32, ty.rem_euclid(h) as u32))
+            } else {
+                None
+            }
+        } else {
+            Some((tx as u32, ty as u32))
+        }
+    }
 }
