@@ -17,7 +17,7 @@ pub enum MemoryAccessType {
     NonSequential,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Debug)]
 enum MemoryAccessSize {
     Mem8 = 0,
     Mem16 = 1,
@@ -69,6 +69,11 @@ impl Bus {
         bus.wait_n16[REGION_IO as usize] = 1;
         bus.wait_s32[REGION_IO as usize] = 1;
         bus.wait_n32[REGION_IO as usize] = 1;
+
+        bus.wait_s16[REGION_VRAM as usize] = 1;
+        bus.wait_n16[REGION_VRAM as usize] = 1;
+        bus.wait_s32[REGION_VRAM as usize] = 2;
+        bus.wait_n32[REGION_VRAM as usize] = 2;
 
         bus.wait_s16[REGION_OAM as usize] = 1;
         bus.wait_n16[REGION_OAM as usize] = 1;
@@ -138,6 +143,13 @@ impl Gba {
             (Mem32, NonSequential) => &self.bus.wait_n32,
         };
         let cycles = table[(region as usize) & 0xF];
+        debug_assert!(
+            cycles > 0,
+            "region={} size={:?} access={:?}",
+            region,
+            size,
+            access
+        );
         self.scheduler.update(cycles);
     }
 
