@@ -29,6 +29,51 @@ impl ScreenEntryRegular {
 }
 
 impl Gba {
+    /// Render an affine background in the current scanline.
+    pub(super) fn ppu_render_affine_background(
+        &mut self,
+        index: usize,
+        buffer: &mut BackgroundBuffer,
+    ) {
+        let control = self.ppu.bgcnt[index];
+        let affine = self.ppu.bg_affine[index - 2];
+        let (w, h) = control.size.pixels(true);
+        let (dx, dy) = (affine.internal_dx, affine.internal_dy);
+
+        for screen_x in 0..PIXELS_WIDTH {
+            // Do the affine transformation.
+            let mut texture_x = (dx + (screen_x as i32) * (affine.pa as i32)) >> 8;
+            let mut texture_y = (dy + (screen_x as i32) * (affine.pc as i32)) >> 8;
+
+            // Handle wraparound.
+            if texture_x < 0 || texture_x >= (w as i32) || texture_y < 0 || texture_y >= (h as i32)
+            {
+                if control.affine_wrap {
+                    texture_x = texture_x.rem_euclid(w as i32);
+                    texture_y = texture_y.rem_euclid(h as i32);
+                } else {
+                    continue;
+                }
+            }
+
+            let tile_x = (texture_x as u32) / 8;
+            let tile_y = (texture_y as u32) / 8;
+            let subtile_x = (texture_x as u32) % 8;
+            let subtile_y = (texture_y as u32) % 8;
+
+            let entry_offset = tile_x + (tile_y * (h as u32) / 8);
+            let entry_address_base = 0x800 * (control.screen_base_block as u32);
+            let entry_address = entry_address_base + entry_offset;
+            let entry = self.ppu.vram[entry_address as usize];
+
+            let tile_address_base = 0x4000 * (control.character_base_block as u32);
+            let tile_address = tile_address_base + (0x40 * (entry as u32));
+            let index = self.tile_8bpp_get_index(tile_address, subtile_x, subtile_y);
+            let color = self.palette_get_color(index, 0, PALETTE_TABLE_BG);
+            buffer[screen_x as usize] = color;
+        }
+    }
+
     /// Render a regular (non-affine) background in the current scanline.
     pub(super) fn ppu_render_regular_background(
         &mut self,

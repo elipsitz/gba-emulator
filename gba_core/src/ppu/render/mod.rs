@@ -85,12 +85,23 @@ impl Gba {
                         background_count += 1;
                     }
                 }
-                // TODO implement affine tilemaps.
+                if self.ppu.dispcnt.display_bg[2] {
+                    let buffer = &mut background_buffers[2];
+                    self.ppu_render_affine_background(2, buffer);
+                    background_indices[background_count] = 2;
+                    background_count += 1;
+                }
             }
             2 => {
                 // Mode 2: Two affine tilemaps (2, 3).
-                // TODO implement affine tilemaps.
-                background_count = 0;
+                for i in 2..=3 {
+                    if self.ppu.dispcnt.display_bg[i] {
+                        let buffer = &mut background_buffers[i];
+                        self.ppu_render_affine_background(i, buffer);
+                        background_indices[background_count] = i;
+                        background_count += 1;
+                    }
+                }
             }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
