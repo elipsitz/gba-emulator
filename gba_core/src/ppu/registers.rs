@@ -192,3 +192,16 @@ impl BackgroundControl {
             | (self.size.0 << 14)
     }
 }
+
+/// Affine background registers.
+#[derive(Default, Copy, Clone, Debug)]
+pub struct BackgroundAffine {
+    pub pa: i16,
+    pub pb: i16,
+    pub pc: i16,
+    pub pd: i16,
+    pub dx: i32,
+    pub dy: i32,
+    pub internal_dx: i32,
+    pub internal_dy: i32,
+}

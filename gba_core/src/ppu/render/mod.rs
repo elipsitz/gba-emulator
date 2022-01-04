@@ -94,6 +94,7 @@ impl Gba {
             }
             3 => {
                 // Mode 3: Bitmap: 240x160, 16 bpp
+                // TODO handle translation using affine offset registers
                 if self.ppu.dispcnt.display_bg[2] {
                     let input = &mut self.ppu.vram[(PIXELS_WIDTH * screen_y * 2)..];
                     for screen_x in 0..PIXELS_WIDTH {
@@ -106,6 +107,7 @@ impl Gba {
             }
             4 => {
                 // Mode 4: Bitmap: 240x160, 8 bpp (palette) (allows page flipping)
+                // TODO handle translation using affine offset registers
                 if self.ppu.dispcnt.display_bg[2] {
                     let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);
                     let base_address = page_address + (PIXELS_WIDTH * screen_y);
@@ -120,6 +122,7 @@ impl Gba {
             }
             5 => {
                 // Mode 5: Bitmap: 160x128 pixels, 16 bpp, allows page flipping
+                // TODO handle translation using affine offset registers
                 let (w, h) = (160, 128);
                 if self.ppu.dispcnt.display_bg[2] && screen_y < h {
                     let page_address = 0xA000 * (self.ppu.dispcnt.display_frame as usize);

@@ -44,6 +44,9 @@ pub struct Ppu {
     /// Registers BGxVOFS - Background Y-Offsets
     pub bg_vofs: [u16; 4],
 
+    /// Background Affine Registers.
+    pub bg_affine: [BackgroundAffine; 2],
+
     /// Current scanline (0..=227). 160..=227 are in vblank.
     pub vcount: u16,
 
@@ -70,6 +73,7 @@ impl Ppu {
             bgcnt: <[BackgroundControl; 4]>::default(),
             bg_hofs: [0; 4],
             bg_vofs: [0; 4],
+            bg_affine: <[BackgroundAffine; 2]>::default(),
             vcount: 0,
             frame: 0,
 
@@ -126,8 +130,21 @@ impl Gba {
             if self.ppu.dispstat.vblank_irq {
                 self.interrupt_raise(InterruptKind::VBlank);
             }
+
+            // Copy the affine displacement registers to the internal ones.
+            for i in 0..2 {
+                self.ppu.bg_affine[i].internal_dx = self.ppu.bg_affine[i].dx;
+                self.ppu.bg_affine[i].internal_dy = self.ppu.bg_affine[i].dy;
+            }
+
             (PpuEvent::EndVBlankHDraw, CYCLES_HDRAW)
         } else {
+            // Update the affine displacement registers.
+            for i in 0..2 {
+                self.ppu.bg_affine[i].internal_dx += self.ppu.bg_affine[i].pb as i32;
+                self.ppu.bg_affine[i].internal_dy += self.ppu.bg_affine[i].pd as i32;
+            }
+
             // Draw the next scanline (which is visible).
             // XXX: I think we need to fire (and process) vcount interrupt before rendering line.
             // See the red line when vcount has priority in tonc interrupt demo.

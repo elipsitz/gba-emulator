@@ -65,6 +65,46 @@ impl Gba {
             REG_BG2VOFS => self.ppu.bg_vofs[2] = value & 0x1FF,
             REG_BG3HOFS => self.ppu.bg_hofs[3] = value & 0x1FF,
             REG_BG3VOFS => self.ppu.bg_vofs[3] = value & 0x1FF,
+            REG_BG2PA => self.ppu.bg_affine[0].pa = value as i16,
+            REG_BG2PB => self.ppu.bg_affine[0].pb = value as i16,
+            REG_BG2PC => self.ppu.bg_affine[0].pc = value as i16,
+            REG_BG2PD => self.ppu.bg_affine[0].pd = value as i16,
+            REG_BG3PA => self.ppu.bg_affine[1].pa = value as i16,
+            REG_BG3PB => self.ppu.bg_affine[1].pb = value as i16,
+            REG_BG3PC => self.ppu.bg_affine[1].pc = value as i16,
+            REG_BG3PD => self.ppu.bg_affine[1].pd = value as i16,
+            REG_BG2X_L => {
+                set_reg_displacement_lo(&mut self.ppu.bg_affine[0].dx, value);
+                self.ppu.bg_affine[0].internal_dx = self.ppu.bg_affine[0].dx;
+            }
+            REG_BG2X_H => {
+                set_reg_displacement_hi(&mut self.ppu.bg_affine[0].dx, value);
+                self.ppu.bg_affine[0].internal_dx = self.ppu.bg_affine[0].dx;
+            }
+            REG_BG2Y_L => {
+                set_reg_displacement_lo(&mut self.ppu.bg_affine[0].dy, value);
+                self.ppu.bg_affine[0].internal_dy = self.ppu.bg_affine[0].dy;
+            }
+            REG_BG2Y_H => {
+                set_reg_displacement_hi(&mut self.ppu.bg_affine[0].dy, value);
+                self.ppu.bg_affine[0].internal_dy = self.ppu.bg_affine[0].dy;
+            }
+            REG_BG3X_L => {
+                set_reg_displacement_lo(&mut self.ppu.bg_affine[1].dx, value);
+                self.ppu.bg_affine[1].internal_dx = self.ppu.bg_affine[1].dx;
+            }
+            REG_BG3X_H => {
+                set_reg_displacement_hi(&mut self.ppu.bg_affine[1].dx, value);
+                self.ppu.bg_affine[1].internal_dx = self.ppu.bg_affine[1].dx;
+            }
+            REG_BG3Y_L => {
+                set_reg_displacement_lo(&mut self.ppu.bg_affine[1].dy, value);
+                self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
+            }
+            REG_BG3Y_H => {
+                set_reg_displacement_hi(&mut self.ppu.bg_affine[1].dy, value);
+                self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
+            }
             REG_IME => self.interrupt.global_enabled = value & 1 == 1,
             REG_IE => self.interrupt.enabled = value & 0x3FFF,
             REG_IF => self.interrupt_reg_if_write(value),
@@ -114,6 +154,27 @@ impl Gba {
     }
 }
 
+/// Set the low 16-bits of a 32-bit affine background displacement register.
+fn set_reg_displacement_lo(register: &mut i32, value: u16) {
+    let old = (*register) as u32;
+    let new = (old & 0xFFFF_0000) | (value as u32);
+    *register = new as i32;
+}
+
+/// Set the high 16-bits of a 32-bit affine background displacement register.
+fn set_reg_displacement_hi(register: &mut i32, value: u16) {
+    // Only use 12 bits (sign extend the upper 4 bits).
+    let value = ((value as u32) & 0x0FFF) << 16;
+    let value = if value.bit(32 - 4 - 1) {
+        value | 0xF000_0000
+    } else {
+        value
+    };
+    let old = (*register) as u32;
+    let new = (old & 0x0000_FFFF) | value;
+    *register = new as i32;
+}
+
 pub const REG_DISPCNT: u32 = 0x0400_0000;
 pub const REG_DISPSTAT: u32 = 0x0400_0004;
 pub const REG_VCOUNT: u32 = 0x0400_0006;
@@ -131,6 +192,25 @@ pub const REG_BG2HOFS: u32 = 0x0400_0018;
 pub const REG_BG2VOFS: u32 = 0x0400_001A;
 pub const REG_BG3HOFS: u32 = 0x0400_001C;
 pub const REG_BG3VOFS: u32 = 0x0400_001E;
+
+pub const REG_BG2PA: u32 = 0x0400_0020;
+pub const REG_BG2PB: u32 = 0x0400_0022;
+pub const REG_BG2PC: u32 = 0x0400_0024;
+pub const REG_BG2PD: u32 = 0x0400_0026;
+pub const REG_BG2X_L: u32 = 0x0400_0028;
+pub const REG_BG2X_H: u32 = 0x0400_002A;
+pub const REG_BG2Y_L: u32 = 0x0400_002C;
+pub const REG_BG2Y_H: u32 = 0x0400_002E;
+
+pub const REG_BG3PA: u32 = 0x0400_0030;
+pub const REG_BG3PB: u32 = 0x0400_0032;
+pub const REG_BG3PC: u32 = 0x0400_0034;
+pub const REG_BG3PD: u32 = 0x0400_0036;
+pub const REG_BG3X_L: u32 = 0x0400_0038;
+pub const REG_BG3X_H: u32 = 0x0400_003A;
+pub const REG_BG3Y_L: u32 = 0x0400_003C;
+pub const REG_BG3Y_H: u32 = 0x0400_003E;
+
 pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;
 pub const REG_IF: u32 = 0x0400_0202;
