@@ -3,9 +3,13 @@ use std::hint::unreachable_unchecked;
 use crate::Gba;
 use bit::BitIndex;
 
+const NUM_CHANNELS: usize = 4;
+
 /// State for the DMA controller.
 pub struct Dma {
-    channels: [DmaChannel; 4],
+    channels: [DmaChannel; NUM_CHANNELS],
+    /// Active channel bitfield.
+    active: u8,
 }
 
 /// A single DMA channel.
@@ -103,12 +107,38 @@ impl DmaChannelControl {
 impl Dma {
     pub fn new() -> Dma {
         Dma {
+            active: 0,
             channels: <[DmaChannel; 4]>::default(),
         }
     }
 }
 
 impl Gba {
+    /// Returns whether any DMA channel is *active*.
+    /// This is different from *enabled*: active means it's taking control and transferring.
+    pub(crate) fn dma_active(&self) -> bool {
+        self.dma.active != 0
+    }
+
+    /// Performs the actual DMA transfer.
+    pub(crate) fn dma_step(&mut self) {
+        // XXX: determine whether we need to go one cycle at a time
+        // (e.g. for interaction with interrupts, DMAs of different priorities)
+
+        for channel in 0..NUM_CHANNELS {
+            // From high to low priority.
+            if self.dma.active.bit(channel) {
+                self.transfer_channel(channel);
+            }
+        }
+        self.dma.active = 0;
+    }
+
+    /// Perform a DMA transfer for the given channel.
+    fn transfer_channel(&mut self, _channel: usize) {
+        todo!();
+    }
+
     /// Handle a 16-bit write to a DMA register.
     ///
     /// `reg` is relative to the start of the DMA register region, 0x0400_00B0.

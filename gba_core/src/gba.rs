@@ -84,20 +84,30 @@ impl Gba {
 
         'outer: loop {
             while self.scheduler.timestamp() < self.scheduler.peek_deadline().unwrap() {
-                if self.io.power_state == CpuPowerState::Normal {
-                    // Check for IRQ.
-                    if self.interrupt_pending() {
-                        self.cpu_irq();
-                    }
+                let cpu_active = self.io.power_state == CpuPowerState::Normal;
+                let dma_active = self.dma_active();
 
-                    self.cpu_step();
-                } else {
-                    // CPU is in halt state. Skip to the next interrupt.
-                    if self.interrupt_pending() {
-                        self.io.power_state = CpuPowerState::Normal;
-                    } else {
-                        self.scheduler.skip_to_next_event();
-                        break;
+                match (cpu_active, dma_active) {
+                    (_, true) => {
+                        // DMA is active and runs while CPU is suspended.
+                        self.dma_step();
+                    }
+                    (true, false) => {
+                        // Check for IRQ.
+                        if self.interrupt_pending() {
+                            self.cpu_irq();
+                        }
+
+                        self.cpu_step();
+                    }
+                    (false, false) => {
+                        // CPU is in halt state and no DMA is active. Skip to next interrupt.
+                        if self.interrupt_pending() {
+                            self.io.power_state = CpuPowerState::Normal;
+                        } else {
+                            self.scheduler.skip_to_next_event();
+                            break;
+                        }
                     }
                 }
             }
