@@ -1,6 +1,6 @@
 use std::hint::unreachable_unchecked;
 
-use crate::Gba;
+use crate::{bus::MemoryAccessType, interrupt::InterruptKind, Gba};
 use bit::BitIndex;
 
 const NUM_CHANNELS: usize = 4;
@@ -13,7 +13,6 @@ pub struct Dma {
 }
 
 /// A single DMA channel.
-#[derive(Default)]
 struct DmaChannel {
     /// Source address register.
     src: u32,
@@ -24,19 +23,37 @@ struct DmaChannel {
     /// Control register.
     control: DmaChannelControl,
 
+    /// Next access type.
+    access_type: MemoryAccessType,
+
     /// Internal source address register.
     internal_src: u32,
     /// Internal destination address register.
     internal_dest: u32,
     /// Internal count register.
-    internal_count: u16,
+    internal_count: u32,
+}
+
+impl Default for DmaChannel {
+    fn default() -> Self {
+        DmaChannel {
+            src: 0,
+            dest: 0,
+            count: 0,
+            control: DmaChannelControl(0),
+            access_type: MemoryAccessType::NonSequential,
+            internal_src: 0,
+            internal_dest: 0,
+            internal_count: 0,
+        }
+    }
 }
 
 /// DMA control register.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone)]
 struct DmaChannelControl(u16);
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum AdjustmentMode {
     Increment,
     Decrement,
@@ -44,7 +61,7 @@ enum AdjustmentMode {
     IncrementReload,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 enum TimingMode {
     Immediate,
     VBlank,
@@ -102,6 +119,10 @@ impl DmaChannelControl {
     fn enabled(self) -> bool {
         self.0.bit(15)
     }
+
+    fn set_enabled(&mut self, enabled: bool) {
+        self.0.set_bit(15, enabled);
+    }
 }
 
 impl Dma {
@@ -131,12 +152,80 @@ impl Gba {
                 self.transfer_channel(channel);
             }
         }
-        self.dma.active = 0;
     }
 
     /// Perform a DMA transfer for the given channel.
-    fn transfer_channel(&mut self, _channel: usize) {
-        todo!();
+    fn transfer_channel(&mut self, index: usize) {
+        // Do a single transfer.
+        let channel = &self.dma.channels[index];
+        let access = channel.access_type;
+        let src = channel.internal_src;
+        let dest = channel.internal_dest;
+        let word_size = channel.control.word_size() as u32;
+        if word_size == 2 {
+            let data = self.cpu_load16(src & !0b1, access);
+            self.cpu_store16(dest & !0b1, data, access);
+        } else {
+            let data = self.cpu_load32(src & !0b11, access);
+            self.cpu_store32(dest & !0b11, data, access);
+        }
+
+        // Update the state.
+        let mut channel = &mut self.dma.channels[index];
+        channel.access_type = MemoryAccessType::Sequential;
+        match channel.control.src_adjustment() {
+            AdjustmentMode::Fixed => {}
+            AdjustmentMode::Decrement => channel.internal_src = src.wrapping_sub(word_size),
+            AdjustmentMode::Increment => channel.internal_src = src.wrapping_add(word_size),
+            _ => unreachable!(),
+        };
+        match channel.control.dest_adjustment() {
+            AdjustmentMode::Fixed => {}
+            AdjustmentMode::Decrement => channel.internal_dest = dest.wrapping_sub(word_size),
+            AdjustmentMode::Increment | AdjustmentMode::IncrementReload => {
+                channel.internal_dest = dest.wrapping_add(word_size)
+            }
+        };
+
+        channel.internal_count -= 1;
+        if channel.internal_count == 0 {
+            // We completed the DMA.
+            if channel.control.repeat() {
+                if channel.control.dest_adjustment() == AdjustmentMode::IncrementReload {
+                    channel.internal_dest = channel.dest;
+                }
+                channel.internal_count = if channel.count == 0 {
+                    if index == 3 {
+                        0x10000
+                    } else {
+                        0x4000
+                    }
+                } else {
+                    channel.count as u32
+                };
+            } else {
+                channel.control.set_enabled(false);
+            }
+
+            if channel.control.irq() {
+                let interrupt_kind = match index {
+                    0 => InterruptKind::Dma0,
+                    1 => InterruptKind::Dma1,
+                    2 => InterruptKind::Dma2,
+                    3 => InterruptKind::Dma3,
+                    _ => unsafe { unreachable_unchecked() },
+                };
+                self.interrupt_raise(interrupt_kind);
+            }
+
+            self.dma.active.set_bit(index, false);
+        }
+    }
+
+    /// Activate a DMA channel (in response to an event).
+    pub(crate) fn dma_activate_channel(&mut self, channel: usize) {
+        self.dma.active.set_bit(channel, true);
+        self.dma.channels[channel].access_type = MemoryAccessType::NonSequential;
     }
 
     /// Handle a 16-bit write to a DMA register.
@@ -159,8 +248,37 @@ impl Gba {
             0x8 => c.count = value,
             // Control register.
             0xA => {
-                let _control = DmaChannelControl(value);
-                todo!();
+                let control = DmaChannelControl(value);
+                let enabled = !c.control.enabled() && control.enabled();
+
+                if control.src_adjustment() == AdjustmentMode::IncrementReload {
+                    panic!("Invalid DMA src adjustment IncrementReload");
+                }
+
+                if enabled {
+                    // Just enabled this channel. Copy registers to internal.
+                    c.internal_src = c.src;
+                    c.internal_dest = c.dest;
+                    c.internal_count = if c.count == 0 {
+                        if channel_index == 3 {
+                            0x10000
+                        } else {
+                            0x4000
+                        }
+                    } else {
+                        c.count as u32
+                    };
+
+                    match control.timing() {
+                        TimingMode::Immediate => {
+                            let event = crate::scheduler::Event::DmaActivate(channel_index as u8);
+                            self.scheduler.push_event(event, 2);
+                        }
+                        _ => todo!("Unsupported DMA timing: {:?}", control.timing()),
+                    }
+                }
+
+                c.control = control;
             }
             _ => unsafe { unreachable_unchecked() },
         }

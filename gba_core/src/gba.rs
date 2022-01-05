@@ -117,6 +117,7 @@ impl Gba {
                 match event {
                     Event::StopRunning => break 'outer,
                     Event::Ppu(ppu) => self.ppu_on_event(ppu, lateness),
+                    Event::DmaActivate(channel) => self.dma_activate_channel(channel as usize),
                 }
             }
         }

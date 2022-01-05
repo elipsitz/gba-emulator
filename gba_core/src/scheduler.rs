@@ -16,6 +16,9 @@ pub enum Event {
 
     /// A PPU Event.
     Ppu(PpuEvent),
+
+    /// Activate a DMA channel.
+    DmaActivate(u8),
 }
 
 #[derive(Copy, Clone, Debug)]
