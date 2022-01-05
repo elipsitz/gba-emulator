@@ -1,6 +1,6 @@
 use crate::{
-    interrupt::InterruptManager, io::CpuPowerState, Bus, Cpu, Event, Io, KeypadState, Ppu, Rom,
-    Scheduler,
+    interrupt::InterruptManager, io::CpuPowerState, Bus, Cpu, Dma, Event, Io, KeypadState, Ppu,
+    Rom, Scheduler,
 };
 
 pub const WIDTH: usize = 240;
@@ -26,6 +26,9 @@ pub struct Gba {
 
     /// Interrupt manager state.
     pub(crate) interrupt: InterruptManager,
+
+    /// DMA controller state.
+    pub(crate) dma: Dma,
 
     /// The 16 KiB BIOS ROM.
     pub(crate) bios_rom: Box<[u8]>,
@@ -56,6 +59,7 @@ impl Gba {
             io: Io::new(),
             ppu: Ppu::new(),
             interrupt: InterruptManager::new(),
+            dma: Dma::new(),
             bios_rom,
             cart_rom,
             ewram: [0; 256 * 1024],

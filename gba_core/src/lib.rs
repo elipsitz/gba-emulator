@@ -1,5 +1,6 @@
 mod bus;
 mod cpu;
+mod dma;
 mod gba;
 mod interrupt;
 mod io;
@@ -11,6 +12,7 @@ mod scheduler;
 
 use bus::Bus;
 use cpu::Cpu;
+use dma::Dma;
 pub use gba::{Gba, HEIGHT, WIDTH};
 use interrupt::InterruptKind;
 use io::Io;

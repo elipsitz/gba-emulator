@@ -44,6 +44,7 @@ impl Gba {
             REG_IME => self.interrupt.global_enabled as u16,
             REG_IE => self.interrupt.enabled,
             REG_IF => self.interrupt.pending,
+            REG_DMA_START..=REG_DMA_END => self.dma_reg_read(addr - REG_DMA_START),
             _ => 0,
         }
     }
@@ -108,6 +109,7 @@ impl Gba {
             REG_IME => self.interrupt.global_enabled = value & 1 == 1,
             REG_IE => self.interrupt.enabled = value & 0x3FFF,
             REG_IF => self.interrupt_reg_if_write(value),
+            REG_DMA_START..=REG_DMA_END => self.dma_reg_write(addr - REG_DMA_START, value),
             _ => {}
         }
     }
@@ -215,3 +217,6 @@ pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;
 pub const REG_IF: u32 = 0x0400_0202;
 pub const REG_HALTCNT: u32 = 0x0400_0301;
+
+pub const REG_DMA_START: u32 = 0x0400_00B0;
+pub const REG_DMA_END: u32 = 0x0400_00DE;
