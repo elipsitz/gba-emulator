@@ -269,13 +269,12 @@ impl Gba {
                         c.count as u32
                     };
 
-                    match control.timing() {
-                        TimingMode::Immediate => {
-                            let event = crate::scheduler::Event::DmaActivate(channel_index as u8);
-                            self.scheduler.push_event(event, 2);
-                        }
-                        _ => todo!("Unsupported DMA timing: {:?}", control.timing()),
+                    // TODO: DMA Sound FIFO?
+                    if control.timing() == TimingMode::Immediate {
+                        let event = crate::scheduler::Event::DmaActivate(channel_index as u8);
+                        self.scheduler.push_event(event, 2);
                     }
+                    // TODO: implement TimingMode::Special
                 }
 
                 c.control = control;
@@ -295,6 +294,26 @@ impl Gba {
             self.dma.channels[channel_index].control.0
         } else {
             0
+        }
+    }
+
+    /// Called by the PPU on vblank.
+    pub(crate) fn dma_notify_vblank(&mut self) {
+        for i in 0..NUM_CHANNELS {
+            let channel = &self.dma.channels[i];
+            if channel.control.enabled() && channel.control.timing() == TimingMode::VBlank {
+                self.dma_activate_channel(i);
+            }
+        }
+    }
+
+    /// Called by the PPU on hblank (only during visible, non-vblank lines).
+    pub(crate) fn dma_notify_hblank(&mut self) {
+        for i in 0..NUM_CHANNELS {
+            let channel = &self.dma.channels[i];
+            if channel.control.enabled() && channel.control.timing() == TimingMode::HBlank {
+                self.dma_activate_channel(i);
+            }
         }
     }
 }

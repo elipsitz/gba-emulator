@@ -124,6 +124,7 @@ impl Gba {
         if self.ppu.dispstat.hblank_irq {
             self.interrupt_raise(InterruptKind::HBlank);
         }
+        self.dma_notify_hblank();
 
         (PpuEvent::EndHBlank, CYCLES_HBLANK)
     }
@@ -139,6 +140,7 @@ impl Gba {
             if self.ppu.dispstat.vblank_irq {
                 self.interrupt_raise(InterruptKind::VBlank);
             }
+            self.dma_notify_vblank();
 
             // Copy the affine displacement registers to the internal ones.
             for i in 0..2 {
