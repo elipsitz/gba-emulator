@@ -14,11 +14,13 @@ mod scheduler;
 use bus::Bus;
 use cpu::Cpu;
 use dma::Dma;
-pub use gba::{Gba, HEIGHT, WIDTH};
 use interrupt::InterruptKind;
 use io::Io;
-pub use keypad::KeypadState;
 use mem::{Addr, Memory};
 use ppu::Ppu;
-pub use rom::Rom;
 use scheduler::{Event, Scheduler};
+
+pub use backup::BackupFile;
+pub use gba::{Gba, HEIGHT, WIDTH};
+pub use keypad::KeypadState;
+pub use rom::Rom;

@@ -41,3 +41,32 @@ impl BackupType {
         BackupType::None
     }
 }
+
+/// Backing storage for the cartridge backup.
+pub trait BackupFile {
+    /// Read bytes from the given offset into the buffer.
+    fn read(&mut self, offset: usize, buffer: &mut [u8]);
+
+    /// Write bytes from the given buffer at the offset.
+    fn write(&mut self, offset: usize, data: &[u8]);
+}
+
+/// Dummy backup file implementation that stores data in memory.
+pub struct MemoryBackupFile {
+    pub storage: Vec<u8>,
+}
+
+impl BackupFile for MemoryBackupFile {
+    fn read(&mut self, offset: usize, buffer: &mut [u8]) {
+        let available = self.storage.len().saturating_sub(offset);
+        let read = buffer.len().min(available);
+        buffer[..read].copy_from_slice(&self.storage[offset..(offset + read)]);
+        buffer[read..].fill(0u8);
+    }
+
+    fn write(&mut self, offset: usize, data: &[u8]) {
+        let new_len = self.storage.len().max(offset + data.len());
+        self.storage.resize(new_len, 0u8);
+        self.storage[offset..(offset + data.len())].copy_from_slice(data);
+    }
+}

@@ -1,6 +1,6 @@
 use crate::{
-    interrupt::InterruptManager, io::CpuPowerState, Bus, Cpu, Dma, Event, Io, KeypadState, Ppu,
-    Rom, Scheduler,
+    interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cpu, Dma, Event, Io,
+    KeypadState, Ppu, Rom, Scheduler,
 };
 
 pub const WIDTH: usize = 240;
@@ -56,6 +56,9 @@ pub struct GbaBuilder {
 
     /// Whether we should skip the BIOS boot animation.
     skip_bios: bool,
+
+    /// The backing storage for the cartridge backup.
+    backup_file: Option<Box<dyn BackupFile>>,
 }
 
 impl Gba {
@@ -65,6 +68,7 @@ impl Gba {
             bios_rom,
             cart_rom,
             skip_bios: false,
+            backup_file: None,
         }
     }
 
@@ -164,6 +168,12 @@ impl GbaBuilder {
     /// Set whether the BIOS boot animation should be skipped.
     pub fn skip_bios(mut self, should_skip: bool) -> Self {
         self.skip_bios = should_skip;
+        self
+    }
+
+    /// Set the backup file.
+    pub fn backup_file(mut self, backup_file: Box<dyn BackupFile>) -> Self {
+        self.backup_file = Some(backup_file);
         self
     }
 
