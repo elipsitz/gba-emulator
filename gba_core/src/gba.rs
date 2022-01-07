@@ -74,7 +74,7 @@ impl Gba {
 
     /// Create a new GBA emulator from the builder.
     fn build(builder: GbaBuilder) -> Gba {
-        let cartridge = Cartridge::new(builder.cart_rom);
+        let cartridge = Cartridge::new(builder.cart_rom, builder.backup_file);
         let mut gba = Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),

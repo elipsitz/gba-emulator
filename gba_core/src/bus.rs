@@ -24,21 +24,21 @@ enum MemoryAccessSize {
     Mem32 = 2,
 }
 
-const REGION_BIOS: Addr = 0x0;
-const REGION_EWRAM: Addr = 0x2;
-const REGION_IWRAM: Addr = 0x3;
-const REGION_IO: Addr = 0x4;
-const REGION_PALETTE: Addr = 0x5;
-const REGION_VRAM: Addr = 0x6;
-const REGION_OAM: Addr = 0x7;
-const REGION_CART_WS0_A: Addr = 0x8;
-const REGION_CART_WS0_B: Addr = 0x9;
-const REGION_CART_WS1_A: Addr = 0xA;
-const REGION_CART_WS1_B: Addr = 0xB;
-const REGION_CART_WS2_A: Addr = 0xC;
-const REGION_CART_WS2_B: Addr = 0xD;
-const REGION_SRAM: Addr = 0xE;
-const REGION_CART_UNUSED: Addr = 0xF;
+pub const REGION_BIOS: Addr = 0x0;
+pub const REGION_EWRAM: Addr = 0x2;
+pub const REGION_IWRAM: Addr = 0x3;
+pub const REGION_IO: Addr = 0x4;
+pub const REGION_PALETTE: Addr = 0x5;
+pub const REGION_VRAM: Addr = 0x6;
+pub const REGION_OAM: Addr = 0x7;
+pub const REGION_CART_WS0_A: Addr = 0x8;
+pub const REGION_CART_WS0_B: Addr = 0x9;
+pub const REGION_CART_WS1_A: Addr = 0xA;
+pub const REGION_CART_WS1_B: Addr = 0xB;
+pub const REGION_CART_WS2_A: Addr = 0xC;
+pub const REGION_CART_WS2_B: Addr = 0xD;
+pub const REGION_SRAM: Addr = 0xE;
+pub const REGION_CART_UNUSED: Addr = 0xF;
 
 /// Address to region.
 #[inline(always)]

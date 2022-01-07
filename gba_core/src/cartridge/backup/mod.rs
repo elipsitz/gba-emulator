@@ -44,6 +44,9 @@ impl BackupType {
 
 /// Backing storage for the cartridge backup.
 pub trait BackupFile {
+    /// Initialize the file for use, with the given size.
+    fn initialize(&mut self, size: usize);
+
     /// Read bytes from the given offset into the buffer.
     fn read(&mut self, offset: usize, buffer: &mut [u8]);
 
@@ -52,21 +55,46 @@ pub trait BackupFile {
 }
 
 /// Dummy backup file implementation that stores data in memory.
+#[derive(Default)]
 pub struct MemoryBackupFile {
     pub storage: Vec<u8>,
 }
 
 impl BackupFile for MemoryBackupFile {
+    fn initialize(&mut self, size: usize) {
+        self.storage.resize(size, 0u8);
+    }
+
     fn read(&mut self, offset: usize, buffer: &mut [u8]) {
-        let available = self.storage.len().saturating_sub(offset);
-        let read = buffer.len().min(available);
-        buffer[..read].copy_from_slice(&self.storage[offset..(offset + read)]);
-        buffer[read..].fill(0u8);
+        buffer.copy_from_slice(&self.storage[offset..(offset + buffer.len())])
     }
 
     fn write(&mut self, offset: usize, data: &[u8]) {
-        let new_len = self.storage.len().max(offset + data.len());
-        self.storage.resize(new_len, 0u8);
         self.storage[offset..(offset + data.len())].copy_from_slice(data);
+    }
+}
+
+/// A concrete cartridge backup.
+pub enum Backup {
+    None,
+    Sram(Box<dyn BackupFile>),
+    Eeprom,
+    Flash,
+}
+
+impl Backup {
+    /// Construct a new backup from a backup file and type.
+    pub fn new(backup_type: BackupType, mut backup_file: Box<dyn BackupFile>) -> Backup {
+        match backup_type {
+            BackupType::None => Backup::None,
+            BackupType::Sram => {
+                backup_file.initialize(32 * 1024);
+                Backup::Sram(backup_file)
+            }
+            // TODO: implement Eeprom.
+            BackupType::Eeprom => Backup::Eeprom,
+            // TODO: implement Flash.
+            BackupType::Flash64K | BackupType::Flash128K => Backup::Flash,
+        }
     }
 }
