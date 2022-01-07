@@ -1,6 +1,6 @@
 use crate::{
-    interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cpu, Dma, Event, Io,
-    KeypadState, Ppu, Rom, Scheduler,
+    interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cartridge, Cpu, Dma, Event,
+    Io, KeypadState, Ppu, Rom, Scheduler,
 };
 
 pub const WIDTH: usize = 240;
@@ -30,11 +30,11 @@ pub struct Gba {
     /// DMA controller state.
     pub(crate) dma: Dma,
 
+    /// The cartridge.
+    pub(crate) cartridge: Cartridge,
+
     /// The 16 KiB BIOS ROM.
     pub(crate) bios_rom: Box<[u8]>,
-
-    /// The cartridge ROM.
-    pub(crate) cart_rom: Rom,
 
     /// On-board ("external") work RAM.
     pub(crate) ewram: [u8; 256 * 1024],
@@ -74,6 +74,7 @@ impl Gba {
 
     /// Create a new GBA emulator from the builder.
     fn build(builder: GbaBuilder) -> Gba {
+        let cartridge = Cartridge::new(builder.cart_rom);
         let mut gba = Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),
@@ -82,8 +83,8 @@ impl Gba {
             ppu: Ppu::new(),
             interrupt: InterruptManager::new(),
             dma: Dma::new(),
+            cartridge,
             bios_rom: builder.bios_rom,
-            cart_rom: builder.cart_rom,
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
             last_frame_overshoot: 0,

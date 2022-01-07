@@ -1,4 +1,4 @@
-use crate::backup::BackupType;
+use super::BackupType;
 
 /// A Game Boy Advance ROM.
 pub struct Rom {

@@ -38,6 +38,7 @@ const REGION_CART_WS1_B: Addr = 0xB;
 const REGION_CART_WS2_A: Addr = 0xC;
 const REGION_CART_WS2_B: Addr = 0xD;
 const REGION_SRAM: Addr = 0xE;
+const REGION_CART_UNUSED: Addr = 0xF;
 
 /// Address to region.
 #[inline(always)]
@@ -163,20 +164,11 @@ impl Gba {
             REGION_BIOS => self.bios_rom.read_32(addr & 0x3FFF),
             REGION_EWRAM => self.ewram.read_32(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_32(addr & 0x7FFF),
-            REGION_CART_WS0_A | REGION_CART_WS0_B | REGION_CART_WS1_A | REGION_CART_WS1_B
-            | REGION_CART_WS2_A | REGION_CART_WS2_B => {
-                let data = &mut self.cart_rom.data;
-                let addr = addr & 0x1FFFFFF;
-                if (addr as usize) < data.len() {
-                    data.read_32(addr)
-                } else {
-                    0
-                }
-            }
             REGION_IO => self.io_read_32(addr),
             REGION_VRAM => self.ppu.vram.read_32(addr & 0x1FFFF), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.read_32(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_32(addr & 0x3FF),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_32(addr),
             _ => {
                 eprintln!("Bad memory load (32 bit) at {:X}", addr);
                 0
@@ -193,20 +185,11 @@ impl Gba {
             REGION_BIOS => self.bios_rom.read_16(addr & 0x3FFF),
             REGION_EWRAM => self.ewram.read_16(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_16(addr & 0x7FFF),
-            REGION_CART_WS0_A | REGION_CART_WS0_B | REGION_CART_WS1_A | REGION_CART_WS1_B
-            | REGION_CART_WS2_A | REGION_CART_WS2_B => {
-                let data = &mut self.cart_rom.data;
-                let addr = addr & 0x1FFFFFF;
-                if (addr as usize) < data.len() {
-                    data.read_16(addr)
-                } else {
-                    0
-                }
-            }
             REGION_IO => self.io_read_16(addr),
             REGION_VRAM => self.ppu.vram.read_16(addr & 0x1FFFF), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.read_16(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_16(addr & 0x3FF),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_16(addr),
             _ => {
                 eprintln!("Bad memory load (16 bit) at {:X}", addr);
                 0
@@ -223,20 +206,11 @@ impl Gba {
             REGION_BIOS => self.bios_rom.read_8(addr & 0x3FFF),
             REGION_EWRAM => self.ewram.read_8(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_8(addr & 0x7FFF),
-            REGION_CART_WS0_A | REGION_CART_WS0_B | REGION_CART_WS1_A | REGION_CART_WS1_B
-            | REGION_CART_WS2_A | REGION_CART_WS2_B => {
-                let data = &mut self.cart_rom.data;
-                let addr = addr & 0x1FFFFFF;
-                if (addr as usize) < data.len() {
-                    data.read_8(addr)
-                } else {
-                    0
-                }
-            }
             REGION_IO => self.io_read_8(addr),
             REGION_VRAM => self.ppu.vram.read_8(addr & 0x1FFFF), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.read_8(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_8(addr & 0x3FF),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_8(addr),
             _ => {
                 eprintln!("Bad memory load (8 bit) at {:X}", addr);
                 0
@@ -257,6 +231,7 @@ impl Gba {
             REGION_VRAM => self.ppu.vram.write_32(addr & 0x1FFFF, data), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.write_32(addr & 0x3FF, data),
             REGION_OAM => self.ppu.oam.write_32(addr & 0x3FF, data),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.write_32(addr, data),
             _ => {
                 eprintln!(
                     "Bad memory store (32 bit) at {:X}, data {:X}, PC={:08X}",
@@ -279,6 +254,7 @@ impl Gba {
             REGION_VRAM => self.ppu.vram.write_16(addr & 0x1FFFF, data), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.write_16(addr & 0x3FF, data),
             REGION_OAM => self.ppu.oam.write_16(addr & 0x3FF, data),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.write_16(addr, data),
             _ => {
                 eprintln!("Bad memory store (16 bit) at {:X}, data {:X}", addr, data);
             }
@@ -298,6 +274,7 @@ impl Gba {
             REGION_VRAM => self.ppu.vram.write_8(addr & 0x1FFFF, data), // TODO wrap better?
             REGION_PALETTE => self.ppu.palette.write_8(addr & 0x3FF, data),
             REGION_OAM => self.ppu.oam.write_8(addr & 0x3FF, data),
+            REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.write_8(addr, data),
             _ => {
                 eprintln!("Bad memory store (8 bit) at {:X}, data {:X}", addr, data);
             }

@@ -1,5 +1,5 @@
-mod backup;
 mod bus;
+mod cartridge;
 mod cpu;
 mod dma;
 mod gba;
@@ -8,10 +8,10 @@ mod io;
 mod keypad;
 mod mem;
 mod ppu;
-mod rom;
 mod scheduler;
 
 use bus::Bus;
+use cartridge::Cartridge;
 use cpu::Cpu;
 use dma::Dma;
 use interrupt::InterruptKind;
@@ -20,7 +20,6 @@ use mem::{Addr, Memory};
 use ppu::Ppu;
 use scheduler::{Event, Scheduler};
 
-pub use backup::BackupFile;
+pub use cartridge::{BackupFile, Rom};
 pub use gba::{Gba, HEIGHT, WIDTH};
 pub use keypad::KeypadState;
-pub use rom::Rom;
