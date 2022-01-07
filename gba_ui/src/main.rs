@@ -5,6 +5,8 @@ use gba_core::{Gba, KeypadState};
 use minifb::{Key, KeyRepeat, Window, WindowOptions};
 use std::time::{Duration, Instant};
 
+const TARGET_FPS: Duration = Duration::from_nanos(1_000_000_000 / 60);
+
 fn make_gba() -> Gba {
     let args = std::env::args().collect::<Vec<_>>();
     if args.len() != 2 {
@@ -40,24 +42,44 @@ fn main() {
     let mut window =
         Window::new("GBA", WIDTH, HEIGHT, window_options).expect("Failed to create window.");
     // Limit to ~60 FPS.
-    window.limit_update_rate(Some(std::time::Duration::from_micros(16600)));
+    window.limit_update_rate(Some(TARGET_FPS));
 
     let mut paused = false;
     let mut single_step = false;
+    let mut cap_framerate = true;
 
     let mut frame_counter = 0;
     let mut last_fps_update = Instant::now();
     loop {
         if !window.is_open() || window.is_key_down(Key::Escape) {
             // User wants to exit.
+            println!("Exiting.");
             break;
         }
         if window.is_key_pressed(Key::Space, KeyRepeat::No) {
             paused = !paused;
+            if paused {
+                println!("Paused.");
+            } else {
+                println!("Unpaused.");
+            }
         }
         if window.is_key_pressed(Key::Tab, KeyRepeat::Yes) {
+            if !paused {
+                println!("Paused.");
+            }
             paused = true;
             single_step = true;
+        }
+        if window.is_key_pressed(Key::Backslash, KeyRepeat::No) {
+            cap_framerate = !cap_framerate;
+            if cap_framerate {
+                println!("Capped framerate.");
+                window.limit_update_rate(Some(TARGET_FPS));
+            } else {
+                println!("Uncapped framerate.");
+                window.limit_update_rate(None);
+            }
         }
 
         // Get keypad input.
