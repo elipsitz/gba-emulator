@@ -49,9 +49,27 @@ pub struct Gba {
     pub(crate) keypad_state: KeypadState,
 }
 
+/// Builder struct for [`Gba`].
+pub struct GbaBuilder {
+    bios_rom: Box<[u8]>,
+    cart_rom: Rom,
+
+    /// Whether we should skip the BIOS boot animation.
+    skip_bios: bool,
+}
+
 impl Gba {
-    /// Create a new GBA emulator from the given BIOS and cartridge.
-    pub fn new(bios_rom: Box<[u8]>, cart_rom: Rom) -> Gba {
+    /// Create a new GBA emulator builder.
+    pub fn builder(bios_rom: Box<[u8]>, cart_rom: Rom) -> GbaBuilder {
+        GbaBuilder {
+            bios_rom,
+            cart_rom,
+            skip_bios: false,
+        }
+    }
+
+    /// Create a new GBA emulator from the builder.
+    fn build(builder: GbaBuilder) -> Gba {
         let mut gba = Gba {
             cpu: Cpu::new(),
             bus: Bus::new(),
@@ -60,20 +78,21 @@ impl Gba {
             ppu: Ppu::new(),
             interrupt: InterruptManager::new(),
             dma: Dma::new(),
-            bios_rom,
-            cart_rom,
+            bios_rom: builder.bios_rom,
+            cart_rom: builder.cart_rom,
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
             last_frame_overshoot: 0,
             keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
-        gba
-    }
 
-    pub fn skip_bios(&mut self) {
-        self.cpu.skip_bios();
-        self.ppu.skip_bios();
+        if builder.skip_bios {
+            gba.cpu.skip_bios();
+            gba.ppu.skip_bios();
+        }
+
+        gba
     }
 
     /// Run the emulator for at least the given number of cycles.
@@ -138,5 +157,18 @@ impl Gba {
     /// (240 * 160) pixels, each pixel in ARGB format, row major.
     pub fn framebuffer(&self) -> &[u32] {
         &self.ppu.framebuffer
+    }
+}
+
+impl GbaBuilder {
+    /// Set whether the BIOS boot animation should be skipped.
+    pub fn skip_bios(mut self, should_skip: bool) -> Self {
+        self.skip_bios = should_skip;
+        self
+    }
+
+    /// Build the GBA emulator with the current configuration.
+    pub fn build(self) -> Gba {
+        Gba::build(self)
     }
 }
