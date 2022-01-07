@@ -1,3 +1,5 @@
+use crate::backup::BackupType;
+
 /// A Game Boy Advance ROM.
 pub struct Rom {
     /// The ROM data.
@@ -61,11 +63,13 @@ impl Rom {
 
 impl std::fmt::Debug for Rom {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let backup_type = BackupType::detect(self);
         f.write_fmt(format_args!(
-            "Rom(len=0x{:X}, title=\"{}\", code=\"{}\")",
+            "Rom(len=0x{:X}, title=\"{}\", code=\"{}\", backup={:?})",
             self.data.len(),
             self.game_title,
-            self.game_code
+            self.game_code,
+            backup_type,
         ))
     }
 }

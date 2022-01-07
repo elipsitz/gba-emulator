@@ -1,3 +1,4 @@
+mod backup;
 mod bus;
 mod cpu;
 mod dma;
