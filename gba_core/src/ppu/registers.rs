@@ -205,3 +205,36 @@ pub struct BackgroundAffine {
     pub internal_dx: i32,
     pub internal_dy: i32,
 }
+
+/// MOSAIC - Mosaic size.
+#[derive(Copy, Clone, Debug)]
+pub struct Mosaic {
+    /// BG mosaic actual h-size.
+    pub bg_x: u8,
+    /// BG mosaic actual v-size.
+    pub bg_y: u8,
+    /// OBJ mosaic actual h-size.
+    pub obj_x: u8,
+    /// OBJ mosaic actual v-size.
+    pub obj_y: u8,
+}
+
+impl Default for Mosaic {
+    fn default() -> Self {
+        Mosaic {
+            bg_x: 1,
+            bg_y: 1,
+            obj_x: 1,
+            obj_y: 1,
+        }
+    }
+}
+
+impl Mosaic {
+    pub fn write(&mut self, val: u16) {
+        self.bg_x = (val.bit_range(0..4) as u8) + 1;
+        self.bg_y = (val.bit_range(4..8) as u8) + 1;
+        self.obj_x = (val.bit_range(8..12) as u8) + 1;
+        self.obj_y = (val.bit_range(12..16) as u8) + 1;
+    }
+}

@@ -147,6 +147,28 @@ impl Gba {
         }
     }
 
+    /// Apply mosaic effect to an X coordinate.
+    #[inline]
+    fn mosaic_x(&self, attrs: &ObjectAttributes, x: i32) -> i32 {
+        if attrs.mosaic() {
+            let size = self.ppu.mosaic.obj_x as i32;
+            x - (x % size)
+        } else {
+            x
+        }
+    }
+
+    /// Apply mosaic effect to a Y coordinate.
+    #[inline]
+    fn mosaic_y(&self, attrs: &ObjectAttributes, y: i32) -> i32 {
+        if attrs.mosaic() {
+            let size = self.ppu.mosaic.obj_y as i32;
+            y - (y % size)
+        } else {
+            y
+        }
+    }
+
     /// Render a normal (non-affine) object.
     fn render_normal_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
         let screen_y = self.ppu.vcount as i32;
@@ -166,6 +188,7 @@ impl Gba {
 
         // Y relative to sprite top.
         let mut sprite_y = screen_y - obj_y;
+        sprite_y = self.mosaic_y(&attrs, sprite_y);
         if attrs.v_flip() {
             sprite_y = obj_h - sprite_y - 1
         }
@@ -187,6 +210,7 @@ impl Gba {
         for screen_x in left..right {
             // X relative to sprite left.
             let mut sprite_x = screen_x - obj_x;
+            sprite_x = self.mosaic_x(&attrs, sprite_x);
             if attrs.h_flip() {
                 sprite_x = obj_w - sprite_x - 1;
             }
@@ -242,11 +266,13 @@ impl Gba {
 
         let left = obj_x.max(0).min(PIXELS_WIDTH as i32);
         let right = (obj_x + box_w).max(0).min(PIXELS_WIDTH as i32);
-        let iy = screen_y - obj_y - half_height;
+        let box_y = screen_y - obj_y;
+        let iy = self.mosaic_y(&attrs, box_y) - half_height;
 
         for screen_x in left..right {
             // Apply the transformation.
-            let ix = screen_x - obj_x - half_width;
+            let box_x = screen_x - obj_x;
+            let ix = self.mosaic_x(&attrs, box_x) - half_width;
             let texture_x = ((matrix.pa * ix + matrix.pb * iy) >> 8) + (obj_w / 2);
             let texture_y = ((matrix.pc * ix + matrix.pd * iy) >> 8) + (obj_h / 2);
 

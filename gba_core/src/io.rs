@@ -106,6 +106,7 @@ impl Gba {
                 set_reg_displacement_hi(&mut self.ppu.bg_affine[1].dy, value);
                 self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
             }
+            REG_MOSAIC => self.ppu.mosaic.write(value),
             REG_IME => self.interrupt.global_enabled = value & 1 == 1,
             REG_IE => self.interrupt.enabled = value & 0x3FFF,
             REG_IF => self.interrupt_reg_if_write(value),
@@ -212,6 +213,8 @@ pub const REG_BG3X_L: u32 = 0x0400_0038;
 pub const REG_BG3X_H: u32 = 0x0400_003A;
 pub const REG_BG3Y_L: u32 = 0x0400_003C;
 pub const REG_BG3Y_H: u32 = 0x0400_003E;
+
+pub const REG_MOSAIC: u32 = 0x0400_004C;
 
 pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;

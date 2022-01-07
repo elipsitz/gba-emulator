@@ -47,6 +47,9 @@ pub struct Ppu {
     /// Background Affine Registers.
     pub bg_affine: [BackgroundAffine; 2],
 
+    /// Register MOSAIC - Mosaic Size.
+    pub mosaic: Mosaic,
+
     /// Current scanline (0..=227). 160..=227 are in vblank.
     pub vcount: u16,
 
@@ -74,6 +77,7 @@ impl Ppu {
             bg_hofs: [0; 4],
             bg_vofs: [0; 4],
             bg_affine: <[BackgroundAffine; 2]>::default(),
+            mosaic: Mosaic::default(),
             vcount: 0,
             frame: 0,
 
