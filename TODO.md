@@ -1,5 +1,4 @@
 ## Planned
-* Mosaic Effect
 * Blend Effect
 * Window Effect
 * Timers
@@ -13,5 +12,6 @@
 * DMA: Sound FIFO mode
 
 ## Maybe
+* Affine background Mosaic effect
 * Debugger
 * Link Cable

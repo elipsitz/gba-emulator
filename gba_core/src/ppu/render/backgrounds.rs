@@ -29,6 +29,28 @@ impl ScreenEntryRegular {
 }
 
 impl Gba {
+    /// Apply mosaic effect to a background X coordinate.
+    #[inline]
+    pub(super) fn bg_mosaic_x(&self, index: usize, x: u32) -> u32 {
+        if self.ppu.bgcnt[index].mosaic {
+            let size = self.ppu.mosaic.bg_x as u32;
+            x - (x % size)
+        } else {
+            x
+        }
+    }
+
+    /// Apply mosaic effect to a background Y coordinate.
+    #[inline]
+    pub(super) fn bg_mosaic_y(&self, index: usize, y: u32) -> u32 {
+        if self.ppu.bgcnt[index].mosaic {
+            let size = self.ppu.mosaic.bg_y as u32;
+            y - (y % size)
+        } else {
+            y
+        }
+    }
+
     /// Render an affine background in the current scanline.
     pub(super) fn ppu_render_affine_background(
         &mut self,
@@ -75,7 +97,8 @@ impl Gba {
         let (w, h) = control.size.pixels(false);
 
         // Y coordinate of the line of the background we're rendering.
-        let bg_y = ((off_y + self.ppu.vcount) as u32) % (h as u32);
+        let screen_y = self.bg_mosaic_y(index, self.ppu.vcount as u32);
+        let bg_y = ((off_y as u32) + screen_y) % (h as u32);
         let tile_y = bg_y / 8;
         let subtile_y = bg_y % 8;
 
@@ -83,9 +106,10 @@ impl Gba {
         let entry_address_base = 0x800 * (control.screen_base_block as u32);
         let tile_address_base = 0x4000 * (control.character_base_block as u32);
 
-        for screen_x in 0..PIXELS_WIDTH {
+        for original_screen_x in 0..PIXELS_WIDTH {
+            let screen_x = self.bg_mosaic_x(index, original_screen_x as u32);
             // XXX: consider doing optimization to keep the same tile data for 8 pixels.
-            let bg_x = ((off_x as u32) + (screen_x as u32)) % (w as u32);
+            let bg_x = ((off_x as u32) + screen_x) % (w as u32);
             let tile_x = bg_x / 8;
             let mut subtile_x = bg_x % 8;
 
@@ -130,7 +154,7 @@ impl Gba {
                 }
             };
             let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_BG);
-            buffer[screen_x as usize] = color;
+            buffer[original_screen_x as usize] = color;
         }
     }
 }
