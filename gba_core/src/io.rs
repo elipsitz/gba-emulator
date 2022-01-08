@@ -8,6 +8,8 @@ pub struct Io {
     pub keycnt: u16,
     /// Current CPU power state.
     pub power_state: CpuPowerState,
+    /// Value of the WAITCNT (wait control) register.
+    pub waitcnt: WaitControl,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -25,6 +27,7 @@ impl Io {
         Io {
             keycnt: 0,
             power_state: CpuPowerState::Normal,
+            waitcnt: WaitControl(0),
         }
     }
 }
@@ -45,6 +48,7 @@ impl Gba {
             REG_IE => self.interrupt.enabled,
             REG_IF => self.interrupt.pending,
             REG_DMA_START..=REG_DMA_END => self.dma_reg_read(addr - REG_DMA_START),
+            REG_WAITCNT => self.io.waitcnt.0,
             _ => 0,
         }
     }
@@ -111,6 +115,10 @@ impl Gba {
             REG_IE => self.interrupt.enabled = value & 0x3FFF,
             REG_IF => self.interrupt_reg_if_write(value),
             REG_DMA_START..=REG_DMA_END => self.dma_reg_write(addr - REG_DMA_START, value),
+            REG_WAITCNT => {
+                self.io.waitcnt.0 = value & 0x7FFF;
+                self.bus.update_waitcnt(self.io.waitcnt);
+            }
             _ => {}
         }
     }
@@ -178,6 +186,50 @@ fn set_reg_displacement_hi(register: &mut i32, value: u16) {
     *register = new as i32;
 }
 
+/// The WAITCNT register.
+#[derive(Copy, Clone)]
+pub struct WaitControl(pub u16);
+
+impl WaitControl {
+    pub fn sram(self) -> u16 {
+        self.0.bit_range(0..2)
+    }
+
+    pub fn ws0_nonsequential(self) -> u16 {
+        self.0.bit_range(2..4)
+    }
+
+    pub fn ws0_sequential(self) -> u16 {
+        self.0.bit_range(4..5)
+    }
+
+    pub fn ws1_nonsequential(self) -> u16 {
+        self.0.bit_range(5..7)
+    }
+
+    pub fn ws1_sequential(self) -> u16 {
+        self.0.bit_range(7..8)
+    }
+
+    pub fn ws2_nonsequential(self) -> u16 {
+        self.0.bit_range(8..10)
+    }
+
+    pub fn ws2_sequential(self) -> u16 {
+        self.0.bit_range(10..11)
+    }
+
+    #[allow(unused)]
+    pub fn phi_terminal_output(self) -> u16 {
+        self.0.bit_range(11..13)
+    }
+
+    #[allow(unused)]
+    pub fn prefetch(self) -> bool {
+        self.0.bit(14)
+    }
+}
+
 pub const REG_DISPCNT: u32 = 0x0400_0000;
 pub const REG_DISPSTAT: u32 = 0x0400_0004;
 pub const REG_VCOUNT: u32 = 0x0400_0006;
@@ -219,6 +271,7 @@ pub const REG_MOSAIC: u32 = 0x0400_004C;
 pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;
 pub const REG_IF: u32 = 0x0400_0202;
+pub const REG_WAITCNT: u32 = 0x0400_0204;
 pub const REG_HALTCNT: u32 = 0x0400_0301;
 
 pub const REG_DMA_START: u32 = 0x0400_00B0;

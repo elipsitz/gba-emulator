@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::{Addr, Gba, Memory};
+use crate::{io::WaitControl, Addr, Gba, Memory};
 
 /// State for the system memory bus.
 pub struct Bus {
@@ -91,42 +91,36 @@ impl Bus {
         bus.wait_s32[REGION_PALETTE as usize] = 2;
         bus.wait_n32[REGION_PALETTE as usize] = 2;
 
-        bus.wait_s16[REGION_CART_WS0_A as usize] = 3;
-        bus.wait_n16[REGION_CART_WS0_A as usize] = 5;
-        bus.wait_s32[REGION_CART_WS0_A as usize] = 6;
-        bus.wait_n32[REGION_CART_WS0_A as usize] = 8;
-
-        bus.wait_s16[REGION_CART_WS0_B as usize] = 3;
-        bus.wait_n16[REGION_CART_WS0_B as usize] = 5;
-        bus.wait_s32[REGION_CART_WS0_B as usize] = 6;
-        bus.wait_n32[REGION_CART_WS0_B as usize] = 8;
-
-        bus.wait_s16[REGION_CART_WS1_A as usize] = 5;
-        bus.wait_n16[REGION_CART_WS1_A as usize] = 5;
-        bus.wait_s32[REGION_CART_WS1_A as usize] = 10;
-        bus.wait_n32[REGION_CART_WS1_A as usize] = 10;
-
-        bus.wait_s16[REGION_CART_WS1_B as usize] = 5;
-        bus.wait_n16[REGION_CART_WS1_B as usize] = 5;
-        bus.wait_s32[REGION_CART_WS1_B as usize] = 10;
-        bus.wait_n32[REGION_CART_WS1_B as usize] = 10;
-
-        bus.wait_s16[REGION_CART_WS2_A as usize] = 9;
-        bus.wait_n16[REGION_CART_WS2_A as usize] = 5;
-        bus.wait_s32[REGION_CART_WS2_A as usize] = 18;
-        bus.wait_n32[REGION_CART_WS2_A as usize] = 14;
-
-        bus.wait_s16[REGION_CART_WS2_B as usize] = 9;
-        bus.wait_n16[REGION_CART_WS2_B as usize] = 5;
-        bus.wait_s32[REGION_CART_WS2_B as usize] = 18;
-        bus.wait_n32[REGION_CART_WS2_B as usize] = 14;
-
-        bus.wait_s16[REGION_SRAM as usize] = 5;
-        bus.wait_n16[REGION_SRAM as usize] = 5;
-        bus.wait_s32[REGION_SRAM as usize] = 5;
-        bus.wait_n32[REGION_SRAM as usize] = 5;
-
+        bus.update_waitcnt(WaitControl(0));
         bus
+    }
+
+    /// Update cycle timing tables after WAITCNT is updated.
+    pub(crate) fn update_waitcnt(&mut self, waitcnt: WaitControl) {
+        let sram = [4, 3, 2, 8][waitcnt.sram() as usize];
+        let ws0_n = [4, 3, 2, 8][waitcnt.ws0_nonsequential() as usize];
+        let ws0_s = [2, 1][waitcnt.ws0_sequential() as usize];
+        let ws1_n = [4, 3, 2, 8][waitcnt.ws1_nonsequential() as usize];
+        let ws1_s = [4, 1][waitcnt.ws1_sequential() as usize];
+        let ws2_n = [4, 3, 2, 8][waitcnt.ws2_nonsequential() as usize];
+        let ws2_s = [8, 1][waitcnt.ws2_sequential() as usize];
+        // TODO handle prefetch buffer.
+
+        let wait_n = [ws0_n, ws1_n, ws2_n];
+        let wait_s = [ws0_s, ws1_s, ws2_s];
+        for region in REGION_CART_WS0_A..=REGION_CART_WS2_B {
+            let ws = ((region - REGION_CART_WS0_A) / 2) as usize;
+            self.wait_n16[region as usize] = 1 + wait_n[ws];
+            self.wait_s16[region as usize] = 1 + wait_s[ws];
+            self.wait_n32[region as usize] = 1 + wait_n[ws] + 1 + wait_s[ws];
+            self.wait_s32[region as usize] = 1 + wait_s[ws] + 1 + wait_s[ws];
+        }
+        for region in REGION_SRAM..=REGION_CART_UNUSED {
+            self.wait_n16[region as usize] = 1 + sram;
+            self.wait_s16[region as usize] = 1 + sram;
+            self.wait_n32[region as usize] = 1 + sram;
+            self.wait_s32[region as usize] = 1 + sram;
+        }
     }
 }
 
@@ -135,7 +129,6 @@ impl Gba {
     fn add_cycles(&mut self, region: u32, size: MemoryAccessSize, access: MemoryAccessType) {
         use MemoryAccessSize::*;
         use MemoryAccessType::*;
-        // TODO: handle switching waitstates
         // TODO: OAM/Palette/VRAM have "plus 1 cycle if GBA access video mem at same time".
         let table = match (size, access) {
             (Mem8 | Mem16, Sequential) => &self.bus.wait_s16,
@@ -155,7 +148,7 @@ impl Gba {
     }
 
     /// Read a 32 bit value from the bus.
-    pub fn cpu_load32(&mut self, addr: Addr, access: MemoryAccessType) -> u32 {
+    pub(crate) fn cpu_load32(&mut self, addr: Addr, access: MemoryAccessType) -> u32 {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem32, access);
 
@@ -177,7 +170,7 @@ impl Gba {
     }
 
     /// Read a 16 bit value from the bus.
-    pub fn cpu_load16(&mut self, addr: Addr, access: MemoryAccessType) -> u16 {
+    pub(crate) fn cpu_load16(&mut self, addr: Addr, access: MemoryAccessType) -> u16 {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem16, access);
 
@@ -198,7 +191,7 @@ impl Gba {
     }
 
     /// Read an 8 bit value from the bus.
-    pub fn cpu_load8(&mut self, addr: Addr, access: MemoryAccessType) -> u8 {
+    pub(crate) fn cpu_load8(&mut self, addr: Addr, access: MemoryAccessType) -> u8 {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem8, access);
 
@@ -219,7 +212,7 @@ impl Gba {
     }
 
     /// Store a 32 bit value to the bus.
-    pub fn cpu_store32(&mut self, addr: Addr, data: u32, access: MemoryAccessType) {
+    pub(crate) fn cpu_store32(&mut self, addr: Addr, data: u32, access: MemoryAccessType) {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem32, access);
 
@@ -242,7 +235,7 @@ impl Gba {
     }
 
     /// Store a 16 bit value to the bus.
-    pub fn cpu_store16(&mut self, addr: Addr, data: u16, access: MemoryAccessType) {
+    pub(crate) fn cpu_store16(&mut self, addr: Addr, data: u16, access: MemoryAccessType) {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem16, access);
 
@@ -262,7 +255,7 @@ impl Gba {
     }
 
     /// Store an 8 bit value to the bus.
-    pub fn cpu_store8(&mut self, addr: Addr, data: u8, access: MemoryAccessType) {
+    pub(crate) fn cpu_store8(&mut self, addr: Addr, data: u8, access: MemoryAccessType) {
         let region = region_from_address(addr);
         self.add_cycles(region, MemoryAccessSize::Mem8, access);
 
