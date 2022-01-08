@@ -1,5 +1,9 @@
 use crate::Rom;
 
+mod flash;
+
+pub use flash::{FlashBackup, FlashSize};
+
 #[derive(Copy, Clone, Debug)]
 
 pub enum BackupType {
@@ -79,22 +83,22 @@ pub enum Backup {
     None,
     Sram(Box<dyn BackupFile>),
     Eeprom,
-    Flash,
+    Flash(FlashBackup),
 }
 
 impl Backup {
     /// Construct a new backup from a backup file and type.
-    pub fn new(backup_type: BackupType, mut backup_file: Box<dyn BackupFile>) -> Backup {
+    pub fn new(backup_type: BackupType, mut file: Box<dyn BackupFile>) -> Backup {
         match backup_type {
             BackupType::None => Backup::None,
             BackupType::Sram => {
-                backup_file.initialize(32 * 1024);
-                Backup::Sram(backup_file)
+                file.initialize(32 * 1024);
+                Backup::Sram(file)
             }
             // TODO: implement Eeprom.
             BackupType::Eeprom => Backup::Eeprom,
-            // TODO: implement Flash.
-            BackupType::Flash64K | BackupType::Flash128K => Backup::Flash,
+            BackupType::Flash64K => Backup::Flash(FlashBackup::new(FlashSize::Flash64K, file)),
+            BackupType::Flash128K => Backup::Flash(FlashBackup::new(FlashSize::Flash128K, file)),
         }
     }
 }

@@ -36,6 +36,7 @@ impl Memory for Cartridge {
                     file.read((addr & 0x7FFF) as usize, std::slice::from_mut(&mut data));
                     data
                 }
+                Backup::Flash(flash) => flash.read_8(addr & 0xFFFF),
                 _ => 0,
             },
             _ => {
@@ -56,6 +57,7 @@ impl Memory for Cartridge {
                 Backup::Sram(file) => {
                     file.write((addr & 0x7FFF) as usize, &[value]);
                 }
+                Backup::Flash(flash) => flash.write_8(addr & 0xFFFF, value),
                 _ => {}
             },
             _ => {}
