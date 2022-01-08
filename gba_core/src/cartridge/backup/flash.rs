@@ -19,6 +19,20 @@ impl FlashSize {
             FlashSize::Flash128K => 128 * 1024,
         }
     }
+
+    fn id(self) -> [u8; 2] {
+        match self {
+            FlashSize::Flash64K => FLASH_64K_ID,
+            FlashSize::Flash128K => FLASH_128K_ID,
+        }
+    }
+
+    fn banks(self) -> u8 {
+        match self {
+            FlashSize::Flash64K => 1,
+            FlashSize::Flash128K => 2,
+        }
+    }
 }
 
 #[derive(Copy, Clone, Debug)]
@@ -26,6 +40,8 @@ enum CommandState {
     Ready,
     Setup1,
     Setup2,
+    BankSwap,
+    WriteByte,
 }
 
 /// A flash backup.
@@ -38,6 +54,12 @@ pub struct FlashBackup {
 
     /// True if we're in "chip identification mode".
     chip_identification: bool,
+
+    /// Bank for 128KB chips: (0 or 1).
+    bank: u8,
+
+    /// Whether the next command will be an erase command.
+    erase_mode: bool,
 }
 
 impl FlashBackup {
@@ -48,26 +70,24 @@ impl FlashBackup {
             file,
             command: CommandState::Ready,
             chip_identification: false,
+            bank: 0,
+            erase_mode: false,
         }
     }
 
     pub fn read_8(&mut self, addr: u32) -> u8 {
-        // println!("Flash read addr={:04X}", addr);
         if self.chip_identification && addr < 2 {
-            let id = match self.size {
-                FlashSize::Flash64K => FLASH_64K_ID,
-                FlashSize::Flash128K => FLASH_128K_ID,
-            };
-            id[addr as usize]
+            self.size.id()[addr as usize]
         } else {
-            // TODO implement reading.
-            0
+            let offset = self.address(addr & 0xFFFF);
+            let mut data = 0;
+            self.file.read(offset, std::slice::from_mut(&mut data));
+            data
         }
     }
 
     pub fn write_8(&mut self, addr: u32, data: u8) {
         use CommandState::*;
-        // println!("Flash write addr={:04X} data={:02X}", addr, data);
         match (self.command, addr, data) {
             (Ready, 0x5555, 0xAA) => self.command = Setup1,
             (Setup1, 0x2AAA, 0x55) => self.command = Setup2,
@@ -81,6 +101,47 @@ impl FlashBackup {
                 self.chip_identification = false;
                 self.command = Ready;
             }
+            (Setup2, 0x5555, 0xB0) => self.command = BankSwap,
+            (BankSwap, 0x0000, bank) => {
+                self.bank = bank % self.size.banks();
+                self.command = Ready;
+            }
+            (Setup2, 0x5555, 0xA0) => self.command = WriteByte,
+            (WriteByte, address, data) => {
+                let offset = self.address(address & 0xFFFF);
+                self.file.write(offset, &[data]);
+                self.command = Ready;
+            }
+            (Setup2, 0x5555, 0x80) => {
+                // Prepare to erase.
+                self.erase_mode = true;
+                self.command = Ready;
+            }
+            (Setup2, 0x5555, 0x10) => {
+                // Erase entire chip.
+                if self.erase_mode {
+                    for i in 0..self.size.bytes() {
+                        self.file.write(i, &[0xFF]);
+                    }
+                }
+                self.command = Ready;
+                self.erase_mode = false;
+            }
+            (Setup2, addr, 0x30) => {
+                // Erase 4KB sector.
+                if self.erase_mode {
+                    let sector = self.address(addr & 0xF000);
+                    for i in sector..(sector + 4 * 1024) {
+                        self.file.write(i, &[0xFF]);
+                    }
+                }
+                self.command = Ready;
+                self.erase_mode = false;
+            }
+            (_, 0x5555, 0xF0) => {
+                // Forcibly return to ready mode.
+                self.command = Ready;
+            }
             _ => {
                 eprintln!(
                     "Invalid FLASH write. command={:?}, addr={:04X}, data={:02X}",
@@ -88,5 +149,10 @@ impl FlashBackup {
                 );
             }
         }
+    }
+
+    /// Translate an address to the chip address given the bank.
+    fn address(&self, addr: u32) -> usize {
+        ((self.bank as usize) * 64 * 1024) + (addr as usize)
     }
 }

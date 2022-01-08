@@ -4,7 +4,7 @@
 * Timers
 * System Control (e.g. wait state configuration)
 * Save States
-* Cartridge Save
+* EEPROM Backup
 * Cartridge Prefetch
 * Sound
 * Better CLI
