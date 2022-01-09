@@ -205,8 +205,8 @@ impl Gba {
                 (ColorMode::Bpp4, false) => 32,
                 // 8bpp 1-D mapping, stride is width in tiles (* 2)
                 (ColorMode::Bpp8, true) => (obj_w as u32) / 4,
-                // 8bpp 2-D mapping, stride is 64 tiles.
-                (ColorMode::Bpp8, false) => 64,
+                // 8bpp 2-D mapping, stride is 32 tiles.
+                (ColorMode::Bpp8, false) => 32,
             };
             (attrs.tile_index() as u32) + (tile_y * tile_stride)
         };
@@ -265,8 +265,8 @@ impl Gba {
             (ColorMode::Bpp4, false) => 32,
             // 8bpp 1-D mapping, stride is width in tiles (* 2)
             (ColorMode::Bpp8, true) => (obj_w as u32) / 4,
-            // 8bpp 2-D mapping, stride is 64 tiles.
-            (ColorMode::Bpp8, false) => 64,
+            // 8bpp 2-D mapping, stride is 32 tiles.
+            (ColorMode::Bpp8, false) => 32,
         };
         let palette_bank = match color_mode {
             ColorMode::Bpp4 => attrs.palette_bank() as u32,
