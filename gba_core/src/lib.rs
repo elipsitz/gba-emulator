@@ -9,6 +9,7 @@ mod keypad;
 mod mem;
 mod ppu;
 mod scheduler;
+mod timer;
 
 use bus::Bus;
 use cartridge::Cartridge;
@@ -19,6 +20,7 @@ use io::Io;
 use mem::{Addr, Memory};
 use ppu::Ppu;
 use scheduler::{Event, Scheduler};
+use timer::TimerManager;
 
 pub use cartridge::{BackupFile, Rom};
 pub use gba::{Gba, HEIGHT, WIDTH};

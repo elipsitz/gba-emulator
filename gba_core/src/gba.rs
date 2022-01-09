@@ -1,6 +1,6 @@
 use crate::{
     interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cartridge, Cpu, Dma, Event,
-    Io, KeypadState, Ppu, Rom, Scheduler,
+    Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
 };
 
 pub const WIDTH: usize = 240;
@@ -29,6 +29,9 @@ pub struct Gba {
 
     /// DMA controller state.
     pub(crate) dma: Dma,
+
+    /// Timer state.
+    pub(crate) timer: TimerManager,
 
     /// The cartridge.
     pub(crate) cartridge: Cartridge,
@@ -83,6 +86,7 @@ impl Gba {
             ppu: Ppu::new(),
             interrupt: InterruptManager::new(),
             dma: Dma::new(),
+            timer: TimerManager::new(),
             cartridge,
             bios_rom: builder.bios_rom,
             ewram: [0; 256 * 1024],
@@ -141,7 +145,9 @@ impl Gba {
                 match event {
                     Event::StopRunning => break 'outer,
                     Event::Ppu(ppu) => self.ppu_on_event(ppu, lateness),
+                    // TODO maybe handle lateness?
                     Event::DmaActivate(channel) => self.dma_activate_channel(channel as usize),
+                    Event::TimerUpdate => self.timer_handle_event(),
                 }
             }
         }

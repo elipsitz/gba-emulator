@@ -44,6 +44,12 @@ impl Gba {
             REG_BG1CNT => self.ppu.bgcnt[1].read(),
             REG_BG2CNT => self.ppu.bgcnt[2].read(),
             REG_BG3CNT => self.ppu.bgcnt[3].read(),
+            REG_TM0CNT_L | REG_TM1CNT_L | REG_TM2CNT_L | REG_TM3CNT_L => {
+                self.timer_read_counter(((addr & 0b1100) >> 2) as usize)
+            }
+            REG_TM0CNT_H | REG_TM1CNT_H | REG_TM2CNT_H | REG_TM3CNT_H => {
+                self.timer_read_control(((addr & 0b1100) >> 2) as usize)
+            }
             REG_IME => self.interrupt.global_enabled as u16,
             REG_IE => self.interrupt.enabled,
             REG_IF => self.interrupt.pending,
@@ -111,6 +117,12 @@ impl Gba {
                 self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
             }
             REG_MOSAIC => self.ppu.mosaic.write(value),
+            REG_TM0CNT_L | REG_TM1CNT_L | REG_TM2CNT_L | REG_TM3CNT_L => {
+                self.timer_write_counter(((addr & 0b1100) >> 2) as usize, value);
+            }
+            REG_TM0CNT_H | REG_TM1CNT_H | REG_TM2CNT_H | REG_TM3CNT_H => {
+                self.timer_write_control(((addr & 0b1100) >> 2) as usize, value);
+            }
             REG_IME => self.interrupt.global_enabled = value & 1 == 1,
             REG_IE => self.interrupt.enabled = value & 0x3FFF,
             REG_IF => self.interrupt_reg_if_write(value),
@@ -267,6 +279,15 @@ pub const REG_BG3Y_L: u32 = 0x0400_003C;
 pub const REG_BG3Y_H: u32 = 0x0400_003E;
 
 pub const REG_MOSAIC: u32 = 0x0400_004C;
+
+pub const REG_TM0CNT_L: u32 = 0x0400_0100;
+pub const REG_TM1CNT_L: u32 = 0x0400_0104;
+pub const REG_TM2CNT_L: u32 = 0x0400_0108;
+pub const REG_TM3CNT_L: u32 = 0x0400_010C;
+pub const REG_TM0CNT_H: u32 = 0x0400_0102;
+pub const REG_TM1CNT_H: u32 = 0x0400_0106;
+pub const REG_TM2CNT_H: u32 = 0x0400_010A;
+pub const REG_TM3CNT_H: u32 = 0x0400_010E;
 
 pub const REG_IME: u32 = 0x0400_0208;
 pub const REG_IE: u32 = 0x0400_0200;

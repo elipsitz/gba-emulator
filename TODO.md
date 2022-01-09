@@ -1,7 +1,6 @@
 ## Planned
 * Blend Effect
 * Window Effect
-* Timers
 * Save States
 * EEPROM Backup
 * Cartridge Prefetch

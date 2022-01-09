@@ -9,7 +9,7 @@ pub struct Scheduler {
     queue: BinaryHeap<ScheduledEvent>,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum Event {
     /// Stop running the emulator.
     StopRunning,
@@ -19,9 +19,12 @@ pub enum Event {
 
     /// Activate a DMA channel.
     DmaActivate(u8),
+
+    /// Timers need to be updated.
+    TimerUpdate,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq)]
 pub enum PpuEvent {
     /// End of h-draw (during v-draw).
     EndHDraw,
@@ -75,6 +78,16 @@ impl Scheduler {
             }
         }
         None
+    }
+
+    /// Cancels a scheduled event.
+    ///
+    /// Takes O(N) time.
+    pub fn cancel_event(&mut self, event: Event) {
+        // TODO: use [`BinaryHeap::retain`] if/when it's stabilized (it's more efficient).
+        let mut queue = std::mem::take(&mut self.queue).into_vec();
+        queue.retain(|f| f.event != event);
+        self.queue = queue.into();
     }
 
     /// Schedule an event at a moment in time (now + given cycles).
