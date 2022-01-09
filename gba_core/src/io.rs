@@ -10,6 +10,11 @@ pub struct Io {
     pub power_state: CpuPowerState,
     /// Value of the WAITCNT (wait control) register.
     pub waitcnt: WaitControl,
+
+    /// SOUNDBIAS register.
+    /// XXX: stubbed out as R/W to allow bios to boot.
+    /// TODO: implement this for readl.
+    soundbias: u16,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -28,6 +33,7 @@ impl Io {
             keycnt: 0,
             power_state: CpuPowerState::Normal,
             waitcnt: WaitControl(0),
+            soundbias: 0,
         }
     }
 }
@@ -55,6 +61,7 @@ impl Gba {
             REG_IF => self.interrupt.pending,
             REG_DMA_START..=REG_DMA_END => self.dma_reg_read(addr - REG_DMA_START),
             REG_WAITCNT => self.io.waitcnt.0,
+            REG_SOUNDBIAS => self.io.soundbias,
             _ => 0,
         }
     }
@@ -131,6 +138,7 @@ impl Gba {
                 self.io.waitcnt.0 = value & 0x7FFF;
                 self.bus.update_waitcnt(self.io.waitcnt);
             }
+            REG_SOUNDBIAS => self.io.soundbias = value,
             _ => {}
         }
     }
@@ -297,3 +305,5 @@ pub const REG_HALTCNT: u32 = 0x0400_0301;
 
 pub const REG_DMA_START: u32 = 0x0400_00B0;
 pub const REG_DMA_END: u32 = 0x0400_00DE;
+
+pub const REG_SOUNDBIAS: u32 = 0x0400_0088;
