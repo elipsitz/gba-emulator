@@ -20,7 +20,6 @@ pub struct DisplayControl {
     pub obj_character_vram_mapping: bool,
 
     /// Forced blank (allow FAST access to VRAM, Palette, OAM)
-    /// TODO implement forced blank
     pub forced_blank: bool,
 
     /// Screen display BG layer.

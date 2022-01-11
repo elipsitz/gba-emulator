@@ -57,6 +57,15 @@ type BackgroundBuffer = [Color15; PIXELS_WIDTH];
 impl Gba {
     /// Render the current scanline.
     pub(super) fn ppu_render_scanline(&mut self) {
+        // Forced blank shows all white.
+        if self.ppu.dispcnt.forced_blank {
+            let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
+            for x in 0..PIXELS_WIDTH {
+                self.ppu.framebuffer[framebuffer_offset + x] = Color15::WHITE.as_argb();
+            }
+            return;
+        }
+
         // Render objects.
         let mut object_buffer = [ObjectBufferEntry::default(); PIXELS_WIDTH];
         if self.ppu.dispcnt.display_obj {
