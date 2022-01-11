@@ -4,11 +4,11 @@ use crate::{mem::Memory, Gba};
 
 mod backgrounds;
 mod bitmap;
+mod compose;
 mod objects;
 
 const PALETTE_TABLE_BG: u32 = 0x0000;
 const PALETTE_TABLE_OBJ: u32 = 0x0200;
-const PRIORITY_HIDDEN: u16 = u16::MAX;
 
 /// Affine transformation matrix.
 struct AffineMatrix {
@@ -24,13 +24,16 @@ struct AffineMatrix {
 struct ObjectBufferEntry {
     pub color: Color15,
     pub priority: u16,
+    pub blend: bool,
 }
 
 impl ObjectBufferEntry {
-    fn set(&mut self, color: Color15, priority: u16) {
+    fn set(&mut self, color: Color15, attributes: &objects::ObjectAttributes) {
+        let priority = attributes.priority();
         if priority < self.priority {
             self.color = color;
             self.priority = priority;
+            self.blend = attributes.gfx_mode() == objects::GraphicsMode::Blend;
         }
     }
 }
@@ -40,6 +43,7 @@ impl Default for ObjectBufferEntry {
         Self {
             color: Color15::TRANSPARENT,
             priority: u16::MAX,
+            blend: false,
         }
     }
 }
@@ -133,47 +137,11 @@ impl Gba {
             m @ _ => panic!("Unsupported video mode {}", m),
         }
 
-        self.compose_scanline(
+        self.ppu_compose_scanline(
             &object_buffer,
             &background_buffers,
             &mut background_indices[..background_count],
         );
-    }
-
-    /// Do final composition of a scanline and write it to the screenbuffer.
-    fn compose_scanline(
-        &mut self,
-        object_buffer: &ObjectBuffer,
-        background_buffers: &[BackgroundBuffer; 4],
-        background_indices: &mut [usize],
-    ) {
-        let framebuffer_offset = PIXELS_WIDTH * (self.ppu.vcount as usize);
-        let backdrop_color = Color15(self.ppu.palette.read_16(0));
-
-        // Sort backgrounds.
-        background_indices.sort_by_key(|&x| self.ppu.bgcnt[x].priority);
-
-        // TODO: implement more complex object/background priority interactions.
-        for x in 0..PIXELS_WIDTH {
-            let mut color = backdrop_color;
-
-            // Find first non-transparent background layer.
-            let bg_layer = background_indices
-                .iter()
-                .filter(|&&i| !background_buffers[i][x].transparent())
-                .next();
-            let bg_priority = bg_layer.map_or(PRIORITY_HIDDEN, |&i| self.ppu.bgcnt[i].priority);
-            if let Some(&layer) = bg_layer {
-                color = background_buffers[layer][x];
-            }
-
-            // Add object color if it's not transparent.
-            if !object_buffer[x].color.transparent() && object_buffer[x].priority <= bg_priority {
-                color = object_buffer[x].color;
-            }
-
-            self.ppu.framebuffer[framebuffer_offset + x] = color.as_argb();
-        }
     }
 
     /// Get a palette index from a 4bpp tile.

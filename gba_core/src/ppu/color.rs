@@ -18,14 +18,4 @@ impl Color15 {
     pub fn transparent(self) -> bool {
         self == Color15::TRANSPARENT
     }
-
-    /// Layer another color on top of this one.
-    /// Returns the other color if it is opaque, otherwise this color
-    pub fn and(self, other: Color15) -> Color15 {
-        if other == Color15::TRANSPARENT {
-            self
-        } else {
-            other
-        }
-    }
 }

@@ -15,14 +15,14 @@ enum ObjectMode {
 }
 
 #[derive(Clone, Copy, Debug, PartialEq)]
-enum GraphicsMode {
+pub enum GraphicsMode {
     Normal = 0b00,
     Blend = 0b01,
     Window = 0b10,
     Forbidden = 0b11,
 }
 
-struct ObjectAttributes {
+pub struct ObjectAttributes {
     raw: [u16; 3],
 }
 
@@ -49,7 +49,7 @@ impl ObjectAttributes {
         }
     }
 
-    fn gfx_mode(&self) -> GraphicsMode {
+    pub fn gfx_mode(&self) -> GraphicsMode {
         match self.raw[0].bit_range(10..12) {
             0b00 => GraphicsMode::Normal,
             0b01 => GraphicsMode::Blend,
@@ -57,10 +57,6 @@ impl ObjectAttributes {
             0b11 => GraphicsMode::Forbidden,
             _ => unsafe { unreachable_unchecked() },
         }
-    }
-
-    fn affine(&self) -> bool {
-        self.raw[0].bit(8)
     }
 
     fn mosaic(&self) -> bool {
@@ -115,7 +111,7 @@ impl ObjectAttributes {
         self.raw[2].bit_range(0..10) as usize
     }
 
-    fn priority(&self) -> u16 {
+    pub fn priority(&self) -> u16 {
         self.raw[2].bit_range(10..12)
     }
 
@@ -185,7 +181,6 @@ impl Gba {
             ColorMode::Bpp4 => attrs.palette_bank() as u32,
             ColorMode::Bpp8 => 0u32,
         };
-        let priority = attrs.priority();
 
         // Y relative to sprite top.
         let mut sprite_y = screen_y - obj_y;
@@ -235,7 +230,7 @@ impl Gba {
             };
             let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_OBJ);
             if color != Color15::TRANSPARENT {
-                buffer[screen_x as usize].set(color, priority);
+                buffer[screen_x as usize].set(color, &attrs);
             }
         }
     }
@@ -272,7 +267,6 @@ impl Gba {
             ColorMode::Bpp4 => attrs.palette_bank() as u32,
             ColorMode::Bpp8 => 0u32,
         };
-        let priority = attrs.priority();
 
         let half_width = box_w / 2;
         let half_height = box_h / 2;
@@ -307,7 +301,7 @@ impl Gba {
                 };
                 let color = self.palette_get_color(index, palette_bank, PALETTE_TABLE_OBJ);
                 if color != Color15::TRANSPARENT {
-                    buffer[screen_x as usize].set(color, priority);
+                    buffer[screen_x as usize].set(color, &attrs);
                 }
             }
         }
