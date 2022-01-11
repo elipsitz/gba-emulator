@@ -1,7 +1,7 @@
 use super::{BackgroundBuffer, ObjectBuffer, ObjectBufferEntry};
 use crate::{
     mem::Memory,
-    ppu::{color::Color15, PIXELS_WIDTH},
+    ppu::{color::Color15, registers::BlendMode, PIXELS_WIDTH},
     Gba,
 };
 
@@ -42,7 +42,7 @@ impl Gba {
     ) -> Color15 {
         // TODO: implement more complex object/background priority interactions.
         // To support blending, we need to find the top two non-transparent layers.
-        let (top, _bottom) = {
+        let (top, bottom) = {
             // First loop at backgrounds and backdrops.
             let backdrop = Layer::backdrop(backdrop_color);
             let mut bg_iter = bg_indices
@@ -68,7 +68,39 @@ impl Gba {
             (top, bottom)
         };
 
-        top.color
+        // Whether the top layer is a blended object (has special behavior).
+        let object_blend = (top.kind == KIND_OBJ) && obj.blend;
+        let blend_mode = if object_blend {
+            BlendMode::Normal
+        } else {
+            self.ppu.bldcnt.mode
+        };
+        let blend_top = self.ppu.bldcnt.top[top.kind];
+        let blend_bottom = self.ppu.bldcnt.bottom[bottom.kind];
+        let blend_enabled = (blend_top && blend_mode != BlendMode::None) || object_blend;
+
+        if blend_enabled {
+            match blend_mode {
+                BlendMode::Normal if blend_bottom => Color15::blend(
+                    top.color,
+                    bottom.color,
+                    self.ppu.bldalpha.top,
+                    self.ppu.bldalpha.bottom,
+                ),
+                BlendMode::White => {
+                    let fade = self.ppu.bldy.fade.min(16);
+                    Color15::blend(top.color, Color15::WHITE, 16 - fade, fade)
+                }
+                BlendMode::Black => {
+                    let fade = self.ppu.bldy.fade.min(16);
+                    Color15::blend(top.color, Color15::BLACK, 16 - fade, fade)
+                }
+                _ => top.color,
+            }
+        } else {
+            // No blending. Use the top layer.
+            top.color
+        }
     }
 }
 

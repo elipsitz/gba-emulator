@@ -1,5 +1,4 @@
 ## Planned
-* Blend Effect
 * Window Effect
 * Save States
 * EEPROM Backup
