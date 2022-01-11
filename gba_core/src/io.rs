@@ -50,6 +50,8 @@ impl Gba {
             REG_BG1CNT => self.ppu.bgcnt[1].read(),
             REG_BG2CNT => self.ppu.bgcnt[2].read(),
             REG_BG3CNT => self.ppu.bgcnt[3].read(),
+            REG_BLDCNT => self.ppu.bldcnt.read(),
+            REG_BLDALPHA => self.ppu.bldalpha.read(),
             REG_TM0CNT_L | REG_TM1CNT_L | REG_TM2CNT_L | REG_TM3CNT_L => {
                 self.timer_read_counter(((addr & 0b1100) >> 2) as usize)
             }
@@ -124,6 +126,9 @@ impl Gba {
                 self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
             }
             REG_MOSAIC => self.ppu.mosaic.write(value),
+            REG_BLDCNT => self.ppu.bldcnt.write(value),
+            REG_BLDALPHA => self.ppu.bldalpha.write(value),
+            REG_BLDY => self.ppu.bldy.write(value),
             REG_TM0CNT_L | REG_TM1CNT_L | REG_TM2CNT_L | REG_TM3CNT_L => {
                 self.timer_write_counter(((addr & 0b1100) >> 2) as usize, value);
             }
@@ -287,6 +292,9 @@ pub const REG_BG3Y_L: u32 = 0x0400_003C;
 pub const REG_BG3Y_H: u32 = 0x0400_003E;
 
 pub const REG_MOSAIC: u32 = 0x0400_004C;
+pub const REG_BLDCNT: u32 = 0x0400_0050;
+pub const REG_BLDALPHA: u32 = 0x0400_0052;
+pub const REG_BLDY: u32 = 0x0400_0054;
 
 pub const REG_TM0CNT_L: u32 = 0x0400_0100;
 pub const REG_TM1CNT_L: u32 = 0x0400_0104;

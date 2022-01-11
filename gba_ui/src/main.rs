@@ -75,7 +75,7 @@ fn make_gba() -> Gba {
     let backup_file = make_backup_file(backup_path);
 
     gba_core::Gba::builder(bios.into(), rom)
-        //.skip_bios(true)
+        .skip_bios(true)
         .backup_file(backup_file)
         .build()
 }

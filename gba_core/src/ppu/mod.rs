@@ -50,6 +50,15 @@ pub struct Ppu {
     /// Register MOSAIC - Mosaic Size.
     pub mosaic: Mosaic,
 
+    /// Register BLDCNT - Blend Control.
+    pub bldcnt: BlendControl,
+
+    /// Register BLDALPHA - Blend Alpha.
+    pub bldalpha: BlendAlpha,
+
+    /// Register BLDY - Blend Fade.
+    pub bldy: BlendFade,
+
     /// Current scanline (0..=227). 160..=227 are in vblank.
     pub vcount: u16,
 
@@ -78,6 +87,9 @@ impl Ppu {
             bg_vofs: [0; 4],
             bg_affine: <[BackgroundAffine; 2]>::default(),
             mosaic: Mosaic::default(),
+            bldcnt: BlendControl::default(),
+            bldalpha: BlendAlpha::default(),
+            bldy: BlendFade::default(),
             vcount: 0,
             frame: 0,
 

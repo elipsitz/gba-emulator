@@ -1,3 +1,5 @@
+use std::hint::unreachable_unchecked;
+
 use bit::BitIndex;
 
 use super::ColorMode;
@@ -236,5 +238,94 @@ impl Mosaic {
         self.bg_y = (val.bit_range(4..8) as u8) + 1;
         self.obj_x = (val.bit_range(8..12) as u8) + 1;
         self.obj_y = (val.bit_range(12..16) as u8) + 1;
+    }
+}
+
+/// Blend mode.
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum BlendMode {
+    None = 0b00,
+    Normal = 0b01,
+    White = 0b10,
+    Black = 0b11,
+}
+
+/// BLDCNT - Blend Control
+#[derive(Copy, Clone)]
+pub struct BlendControl {
+    /// Top and bottom layers.
+    /// (bg0, bg1, bg2, bg3, obj, backdrop)
+    pub top: [bool; 6],
+    pub bottom: [bool; 6],
+    /// Blend mode.
+    pub mode: BlendMode,
+}
+
+impl Default for BlendControl {
+    fn default() -> Self {
+        BlendControl {
+            top: [false; 6],
+            bottom: [false; 6],
+            mode: BlendMode::None,
+        }
+    }
+}
+
+impl BlendControl {
+    pub fn write(&mut self, val: u16) {
+        for i in 0..6 {
+            self.top[i] = val.bit(i);
+            self.bottom[i] = val.bit(8 + i);
+        }
+        self.mode = match val.bit_range(6..8) {
+            0b00 => BlendMode::None,
+            0b01 => BlendMode::Normal,
+            0b10 => BlendMode::White,
+            0b11 => BlendMode::Black,
+            _ => unsafe { unreachable_unchecked() },
+        };
+    }
+
+    pub fn read(&self) -> u16 {
+        let mut val = 0u16;
+        for i in 0..6 {
+            val.set_bit(i, self.top[i]);
+            val.set_bit(8 + i, self.bottom[i]);
+        }
+        val.set_bit_range(6..8, self.mode as u16);
+        val
+    }
+}
+
+/// BLDALPHA - Blend alpha values
+#[derive(Copy, Clone, Default)]
+pub struct BlendAlpha {
+    /// Top blend weight.
+    pub top: u16,
+    /// Bottom blend weight.
+    pub bottom: u16,
+}
+
+impl BlendAlpha {
+    pub fn write(&mut self, val: u16) {
+        self.top = val.bit_range(0..5);
+        self.bottom = val.bit_range(8..13);
+    }
+
+    pub fn read(&self) -> u16 {
+        self.top | (self.bottom << 8)
+    }
+}
+
+/// BLDT - Blend fade values
+#[derive(Copy, Clone, Default)]
+pub struct BlendFade {
+    /// Top blend fade weight.
+    pub fade: u16,
+}
+
+impl BlendFade {
+    pub fn write(&mut self, val: u16) {
+        self.fade = val.bit_range(0..5);
     }
 }
