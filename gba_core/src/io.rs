@@ -52,6 +52,8 @@ impl Gba {
             REG_BG3CNT => self.ppu.bgcnt[3].read(),
             REG_BLDCNT => self.ppu.bldcnt.read(),
             REG_BLDALPHA => self.ppu.bldalpha.read(),
+            REG_WININ => self.ppu.win_in.read(),
+            REG_WINOUT => self.ppu.win_out.read(),
             REG_TM0CNT_L | REG_TM1CNT_L | REG_TM2CNT_L | REG_TM3CNT_L => {
                 self.timer_read_counter(((addr & 0b1100) >> 2) as usize)
             }
@@ -125,6 +127,12 @@ impl Gba {
                 set_reg_displacement_hi(&mut self.ppu.bg_affine[1].dy, value);
                 self.ppu.bg_affine[1].internal_dy = self.ppu.bg_affine[1].dy;
             }
+            REG_WIN0H => self.ppu.win_h[0].write(value),
+            REG_WIN1H => self.ppu.win_h[1].write(value),
+            REG_WIN0V => self.ppu.win_v[0].write(value),
+            REG_WIN1V => self.ppu.win_v[1].write(value),
+            REG_WININ => self.ppu.win_in.write(value),
+            REG_WINOUT => self.ppu.win_out.write(value),
             REG_MOSAIC => self.ppu.mosaic.write(value),
             REG_BLDCNT => self.ppu.bldcnt.write(value),
             REG_BLDALPHA => self.ppu.bldalpha.write(value),
@@ -291,6 +299,12 @@ pub const REG_BG3X_H: u32 = 0x0400_003A;
 pub const REG_BG3Y_L: u32 = 0x0400_003C;
 pub const REG_BG3Y_H: u32 = 0x0400_003E;
 
+pub const REG_WIN0H: u32 = 0x0400_0040;
+pub const REG_WIN1H: u32 = 0x0400_0042;
+pub const REG_WIN0V: u32 = 0x0400_0044;
+pub const REG_WIN1V: u32 = 0x0400_0046;
+pub const REG_WININ: u32 = 0x0400_0048;
+pub const REG_WINOUT: u32 = 0x0400_004A;
 pub const REG_MOSAIC: u32 = 0x0400_004C;
 pub const REG_BLDCNT: u32 = 0x0400_0050;
 pub const REG_BLDALPHA: u32 = 0x0400_0052;

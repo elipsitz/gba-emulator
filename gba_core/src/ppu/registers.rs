@@ -329,3 +329,80 @@ impl BlendFade {
         self.fade = val.bit_range(0..5);
     }
 }
+
+/// WIN[01][HV] - Window bounds.
+#[derive(Copy, Clone, Default)]
+pub struct WindowBounds {
+    /// Start (left or top), inclusive
+    pub min: u8,
+    /// End (right or bottom), exclusive
+    pub max: u8,
+}
+
+impl WindowBounds {
+    pub fn write(&mut self, val: u16) {
+        self.min = ((val & 0xFF00) >> 8) as u8;
+        self.max = val as u8;
+    }
+}
+
+#[derive(Default)]
+/// Part of WINOUT/WININ -- control for a single register.
+pub struct WindowControl {
+    /// Whether the given layer is enabled in this window.
+    pub layer: [bool; 5],
+    /// Whether blending is enabled in this window.
+    pub blend: bool,
+}
+
+impl WindowControl {
+    pub fn write(&mut self, val: u16) {
+        for i in 0..5 {
+            self.layer[i] = val.bit(i);
+        }
+        self.blend = val.bit(5);
+    }
+
+    pub fn read(&self) -> u16 {
+        ((self.layer[0] as u16) << 0)
+            | ((self.layer[1] as u16) << 1)
+            | ((self.layer[2] as u16) << 2)
+            | ((self.layer[3] as u16) << 3)
+            | ((self.layer[4] as u16) << 4)
+            | ((self.blend as u16) << 5)
+    }
+}
+
+#[derive(Default)]
+pub struct WindowIn {
+    pub win0: WindowControl,
+    pub win1: WindowControl,
+}
+
+#[derive(Default)]
+pub struct WindowOut {
+    pub win_out: WindowControl,
+    pub win_obj: WindowControl,
+}
+
+impl WindowIn {
+    pub fn write(&mut self, val: u16) {
+        self.win0.write(val & 0x00FF);
+        self.win1.write((val & 0xFF00) >> 8);
+    }
+
+    pub fn read(&self) -> u16 {
+        self.win0.read() | (self.win0.read() << 8)
+    }
+}
+
+impl WindowOut {
+    pub fn write(&mut self, val: u16) {
+        self.win_out.write(val & 0x00FF);
+        self.win_obj.write((val & 0xFF00) >> 8);
+    }
+
+    pub fn read(&self) -> u16 {
+        self.win_out.read() | (self.win_obj.read() << 8)
+    }
+}

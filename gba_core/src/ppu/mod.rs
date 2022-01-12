@@ -47,6 +47,18 @@ pub struct Ppu {
     /// Background Affine Registers.
     pub bg_affine: [BackgroundAffine; 2],
 
+    /// Window horizontal bounds registers.
+    pub win_h: [WindowBounds; 2],
+
+    /// Window vertical bounds registers.
+    pub win_v: [WindowBounds; 2],
+
+    /// Register WININ - Control for Window 0 and 1.
+    pub win_in: WindowIn,
+
+    /// Register WINOUT - Control for Window Obj and Out.
+    pub win_out: WindowOut,
+
     /// Register MOSAIC - Mosaic Size.
     pub mosaic: Mosaic,
 
@@ -86,6 +98,10 @@ impl Ppu {
             bg_hofs: [0; 4],
             bg_vofs: [0; 4],
             bg_affine: <[BackgroundAffine; 2]>::default(),
+            win_h: [WindowBounds::default(); 2],
+            win_v: [WindowBounds::default(); 2],
+            win_in: WindowIn::default(),
+            win_out: WindowOut::default(),
             mosaic: Mosaic::default(),
             bldcnt: BlendControl::default(),
             bldalpha: BlendAlpha::default(),
