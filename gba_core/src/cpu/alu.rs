@@ -49,7 +49,6 @@ impl AluOpcode {
         matches!(self, AND | EOR | TST | TEQ | ORR | MOV | BIC | MVN)
     }
 
-    #[allow(unused)]
     pub const fn is_arithmetic(self) -> bool {
         !self.is_logical()
     }

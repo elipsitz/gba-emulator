@@ -116,7 +116,6 @@ pub struct Cpu {
     /// ARM7TDMI has a 3 stage pipeline: fetch -> decode -> execute.
     /// The instruction in 'fetch' is at index 1.
     /// The instruction in 'decode' is at index 0.
-    #[allow(unused)]
     pipeline: [u32; 2],
 
     /// Next fetch memory access type.

@@ -75,7 +75,7 @@ fn make_gba() -> Gba {
     let backup_file = make_backup_file(backup_path);
 
     gba_core::Gba::builder(bios.into(), rom)
-        //.skip_bios(true)
+        .skip_bios(true)
         .backup_file(backup_file)
         .build()
 }
@@ -167,9 +167,7 @@ fn main() {
         // Update FPS counter.
         let elapsed = Instant::now() - last_fps_update;
         if elapsed >= Duration::from_secs(1) {
-            let fps = (frame_counter as f64) / elapsed.as_secs_f64();
-            let fps = fps.round() as i32;
-            window.set_title(&format!("GBA (FPS: {})", fps));
+            window.set_title(&format!("GBA (FPS: {})", frame_counter));
             frame_counter = 0;
             last_fps_update = Instant::now();
         }
