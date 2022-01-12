@@ -226,15 +226,15 @@ impl Gba {
         match self.cpu.cpsr.execution_state {
             CpuExecutionState::Thumb => {
                 let pc = pc & !0b1;
+                self.cpu.pc = pc + 4;
                 self.cpu.pipeline[0] = self.cpu_load16(pc, MemoryAccessType::NonSequential) as u32;
                 self.cpu.pipeline[1] = self.cpu_load16(pc + 2, MemoryAccessType::Sequential) as u32;
-                self.cpu.pc = pc + 4;
             }
             CpuExecutionState::Arm => {
                 let pc = pc & !0b11;
+                self.cpu.pc = pc + 8;
                 self.cpu.pipeline[0] = self.cpu_load32(pc, MemoryAccessType::NonSequential);
                 self.cpu.pipeline[1] = self.cpu_load32(pc + 4, MemoryAccessType::Sequential);
-                self.cpu.pc = pc + 8;
             }
         }
         self.cpu.next_fetch_access = MemoryAccessType::Sequential;

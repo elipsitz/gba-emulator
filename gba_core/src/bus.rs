@@ -2,12 +2,17 @@
 
 use crate::{io::WaitControl, Addr, Gba, Memory};
 
+const BIOS_SIZE: u32 = 0x4000;
+
 /// State for the system memory bus.
 pub struct Bus {
     wait_s16: [usize; 16],
     wait_n16: [usize; 16],
     wait_s32: [usize; 16],
     wait_n32: [usize; 16],
+
+    /// Last successfully loaded 32-bit data from BIOS.
+    bios_last_load: u32,
 }
 
 /// Memory access types.
@@ -54,6 +59,7 @@ impl Bus {
             wait_n16: [0; 16],
             wait_s32: [0; 16],
             wait_n32: [0; 16],
+            bios_last_load: 0,
         };
 
         bus.wait_s16[REGION_BIOS as usize] = 1;
@@ -153,8 +159,7 @@ impl Gba {
         self.add_cycles(region, MemoryAccessSize::Mem32, access);
 
         match region {
-            // TODO only allow reading BIOS if PC is in BIOS
-            REGION_BIOS => self.bios_rom.read_32(addr & 0x3FFF),
+            REGION_BIOS if addr <= (BIOS_SIZE - 4) => self.bios_load(addr),
             REGION_EWRAM => self.ewram.read_32(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_32(addr & 0x7FFF),
             REGION_IO => self.io_read_32(addr),
@@ -175,7 +180,7 @@ impl Gba {
         self.add_cycles(region, MemoryAccessSize::Mem16, access);
 
         match region {
-            REGION_BIOS => self.bios_rom.read_16(addr & 0x3FFF),
+            REGION_BIOS if addr <= (BIOS_SIZE - 2) => self.bios_load(addr) as u16,
             REGION_EWRAM => self.ewram.read_16(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_16(addr & 0x7FFF),
             REGION_IO => self.io_read_16(addr),
@@ -196,7 +201,7 @@ impl Gba {
         self.add_cycles(region, MemoryAccessSize::Mem8, access);
 
         match region {
-            REGION_BIOS => self.bios_rom.read_8(addr & 0x3FFF),
+            REGION_BIOS if addr <= (BIOS_SIZE - 1) => self.bios_load(addr) as u8,
             REGION_EWRAM => self.ewram.read_8(addr & 0x3FFFF),
             REGION_IWRAM => self.iwram.read_8(addr & 0x7FFF),
             REGION_IO => self.io_read_8(addr),
@@ -272,5 +277,19 @@ impl Gba {
                 eprintln!("Bad memory store (8 bit) at {:X}, data {:X}", addr, data);
             }
         }
+    }
+
+    /// Load from the BIOS region,
+    fn bios_load(&mut self, address: Addr) -> u32 {
+        if self.cpu.pc < BIOS_SIZE {
+            self.bus.bios_last_load = self.bios_rom.read_32(address & !3);
+        }
+        let shift = (address & 3) << 3;
+        self.bus.bios_last_load >> shift
+    }
+
+    /// Do a read of unused memory (open bus).
+    fn unused_load(&mut self, addr: Addr) -> u32 {
+        0
     }
 }
