@@ -4,7 +4,6 @@
 * Cartridge Prefetch
 * Sound
 * Better CLI
-* Open Bus behavior / Invalid read behavior
 * DMA: Special timing mode
 * DMA: Sound FIFO mode
 

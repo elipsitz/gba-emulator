@@ -340,4 +340,14 @@ impl Gba {
             self.cpu_exception(exception::ExceptionType::Irq, return_address);
         }
     }
+
+    /// Get the CPU's currently prefetched opcode.
+    pub(crate) fn cpu_pipeline_get_prefetch(&self) -> u32 {
+        self.cpu.pipeline[1]
+    }
+
+    /// Get the CPU's currently decoding opcode.
+    pub(crate) fn cpu_pipeline_get_decode(&self) -> u32 {
+        self.cpu.pipeline[0]
+    }
 }

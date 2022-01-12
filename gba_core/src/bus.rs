@@ -1,6 +1,6 @@
 #![allow(unused)]
 
-use crate::{io::WaitControl, Addr, Gba, Memory};
+use crate::{cpu::CpuExecutionState, io::WaitControl, Addr, Gba, Memory};
 
 const BIOS_SIZE: u32 = 0x4000;
 
@@ -167,10 +167,7 @@ impl Gba {
             REGION_PALETTE => self.ppu.palette.read_32(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_32(addr & 0x3FF),
             REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_32(addr),
-            _ => {
-                eprintln!("Bad memory load (32 bit) at {:X}", addr);
-                0
-            }
+            _ => self.unused_load(addr),
         }
     }
 
@@ -188,10 +185,7 @@ impl Gba {
             REGION_PALETTE => self.ppu.palette.read_16(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_16(addr & 0x3FF),
             REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_16(addr),
-            _ => {
-                eprintln!("Bad memory load (16 bit) at {:X}", addr);
-                0
-            }
+            _ => self.unused_load(addr) as u16,
         }
     }
 
@@ -209,10 +203,7 @@ impl Gba {
             REGION_PALETTE => self.ppu.palette.read_8(addr & 0x3FF),
             REGION_OAM => self.ppu.oam.read_8(addr & 0x3FF),
             REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cartridge.read_8(addr),
-            _ => {
-                eprintln!("Bad memory load (8 bit) at {:X}", addr);
-                0
-            }
+            _ => self.unused_load(addr) as u8,
         }
     }
 
@@ -290,6 +281,41 @@ impl Gba {
 
     /// Do a read of unused memory (open bus).
     fn unused_load(&mut self, addr: Addr) -> u32 {
-        0
+        eprintln!("Bad load at PC={:08X}, ADDR={:08X}", self.cpu.pc, addr);
+        let raw = match self.cpu.cpsr.execution_state {
+            CpuExecutionState::Arm => {
+                // ARM returns last fetched opcode.
+                self.cpu_pipeline_get_prefetch()
+            }
+            CpuExecutionState::Thumb => {
+                let pipe0 = self.cpu_pipeline_get_decode() & 0xFFFF;
+                let pipe1 = self.cpu_pipeline_get_prefetch() & 0xFFFF;
+                // Depends on the PC.
+                let (lo, hi) = match region_from_address(self.cpu.pc) {
+                    REGION_BIOS | REGION_OAM => {
+                        if self.cpu.pc & 3 == 0 {
+                            // 4-byte aligned:
+                            // XXX: GBATEK says LSW = [$+4], MSW = [$+6], but we don't have [$+6].
+                            (pipe1, pipe1)
+                        } else {
+                            (pipe0, pipe1)
+                        }
+                    }
+                    REGION_IWRAM => {
+                        if self.cpu.pc & 3 == 0 {
+                            (pipe1, pipe0)
+                        } else {
+                            (pipe0, pipe1)
+                        }
+                    }
+                    _ => {
+                        // EWRAM, PALETTE, VRAM, CARTRIDGE ROM
+                        (pipe1, pipe1)
+                    }
+                };
+                (lo | (hi << 16))
+            }
+        };
+        raw >> ((addr & 3) << 3)
     }
 }
