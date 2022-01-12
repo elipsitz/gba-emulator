@@ -13,7 +13,7 @@ type ThumbHandler = fn(&mut Gba, inst: u16) -> InstructionResult;
 
 /// Dummy unimplemented / invalid Thumb instruction.
 fn thumb_unimplemented(_s: &mut Gba, inst: u16) -> InstructionResult {
-    panic!(
+    eprintln!(
         "Unknown Thumb instruction: {:04x} / [{:04b} {:04b} {:02b}] {:02b} {:04b}",
         inst,
         (inst >> 12) & 0b1111,
@@ -22,6 +22,7 @@ fn thumb_unimplemented(_s: &mut Gba, inst: u16) -> InstructionResult {
         (inst >> 4) & 0b11,
         (inst >> 0) & 0b1111,
     );
+    InstructionResult::Normal
 }
 
 // THUMB.1: shift by immediate
