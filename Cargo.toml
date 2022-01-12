@@ -1,6 +1,6 @@
 [workspace]
 
 members = [
-    "gba_ui",
+    "gba_ui_minifb",
     "gba_core",
 ]

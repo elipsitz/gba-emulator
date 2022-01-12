@@ -1,5 +1,5 @@
 [package]
-name = "gba_ui"
+name = "gba_ui_minifb"
 version = "0.1.0"
 edition = "2021"
 
