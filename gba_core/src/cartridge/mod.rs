@@ -44,8 +44,11 @@ impl Memory for Cartridge {
                 if addr < self.rom.data.len() {
                     self.rom.data[addr]
                 } else {
-                    // TODO handle invalid cartridge read.
-                    0
+                    // Out of bounds cartridge read.
+                    // The same signal lines are used for data and the address, causing
+                    // the address (sort of) to be read.
+                    let data16 = (addr / 2) & 0xFFFF;
+                    (data16 >> ((addr & 1) * 8)) as u8
                 }
             }
         }
