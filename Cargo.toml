@@ -1,6 +1,7 @@
 [workspace]
-
 members = [
     "gba_ui_minifb",
+    "gba_ui_sdl2",
     "gba_core",
 ]
+default-members = ["gba_ui_sdl2"]
