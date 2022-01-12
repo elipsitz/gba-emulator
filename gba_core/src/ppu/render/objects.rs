@@ -63,6 +63,10 @@ impl ObjectAttributes {
         self.raw[0].bit(0xC)
     }
 
+    pub fn window(&self) -> bool {
+        self.gfx_mode() == GraphicsMode::Window
+    }
+
     fn color_mode(&self) -> ColorMode {
         if self.raw[0].bit(0xD) {
             ColorMode::Bpp8
@@ -169,7 +173,10 @@ impl Gba {
     fn render_normal_object(&mut self, attrs: ObjectAttributes, buffer: &mut ObjectBuffer) {
         let screen_y = self.ppu.vcount as i32;
         let ((obj_x, obj_y), (obj_w, obj_h)) = (attrs.pos(), attrs.size());
-        if screen_y < obj_y || screen_y >= (obj_y + obj_h) {
+        if screen_y < obj_y
+            || screen_y >= (obj_y + obj_h)
+            || attrs.gfx_mode() == GraphicsMode::Forbidden
+        {
             // Sprite isn't in this scanline.
             return;
         }
@@ -244,7 +251,10 @@ impl Gba {
         } else {
             (obj_w * 2, obj_h * 2)
         };
-        if screen_y < obj_y || screen_y >= (obj_y + box_h) {
+        if screen_y < obj_y
+            || screen_y >= (obj_y + box_h)
+            || attrs.gfx_mode() == GraphicsMode::Forbidden
+        {
             // Sprite isn't in this scanline.
             return;
         }

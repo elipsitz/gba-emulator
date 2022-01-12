@@ -1,5 +1,4 @@
 ## Planned
-* Window Effect
 * Save States
 * EEPROM Backup
 * Cartridge Prefetch

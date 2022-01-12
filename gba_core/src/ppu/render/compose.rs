@@ -1,7 +1,11 @@
 use super::{BackgroundBuffer, ObjectBuffer, ObjectBufferEntry};
 use crate::{
     mem::Memory,
-    ppu::{color::Color15, registers::BlendMode, PIXELS_WIDTH},
+    ppu::{
+        color::Color15,
+        registers::{BlendMode, WindowControl},
+        PIXELS_WIDTH,
+    },
     Gba,
 };
 
@@ -40,6 +44,27 @@ impl Gba {
         x: usize,
         backdrop_color: Color15,
     ) -> Color15 {
+        // First determine the active window.
+        let window = if !self.ppu.dispcnt.windows_enabled() {
+            WindowControl::none()
+        } else {
+            if self.ppu.dispcnt.window_display[0]
+                && self.ppu.window_scanline_active[0]
+                && self.ppu.win_h[0].test(x)
+            {
+                self.ppu.win_in.win0
+            } else if self.ppu.dispcnt.window_display[1]
+                && self.ppu.window_scanline_active[1]
+                && self.ppu.win_h[1].test(x)
+            {
+                self.ppu.win_in.win1
+            } else if self.ppu.dispcnt.obj_window_display && obj.window {
+                self.ppu.win_out.win_obj
+            } else {
+                self.ppu.win_out.win_out
+            }
+        };
+
         // TODO: implement more complex object/background priority interactions.
         // To support blending, we need to find the top two non-transparent layers.
         let (top, bottom) = {
@@ -47,7 +72,7 @@ impl Gba {
             let backdrop = Layer::backdrop(backdrop_color);
             let mut bg_iter = bg_indices
                 .iter()
-                .filter(|&&i| !bg_buffers[i][x].transparent());
+                .filter(|&&i| !bg_buffers[i][x].transparent() && window.layer[i]);
             let mut top = bg_iter.next().map_or(backdrop, |&i| {
                 Layer::background(i, bg_buffers[i][x], self.ppu.bgcnt[i].priority)
             });
@@ -56,7 +81,7 @@ impl Gba {
             });
 
             // Now see if there's an object that goes on top.
-            if self.ppu.dispcnt.display_obj && !obj.color.transparent() {
+            if self.ppu.dispcnt.display_obj && !obj.color.transparent() && window.layer[KIND_OBJ] {
                 if obj.priority <= top.priority {
                     bottom = top;
                     top = Layer::object(obj.color, obj.priority);
@@ -70,6 +95,11 @@ impl Gba {
 
         // Whether the top layer is a blended object (has special behavior).
         let object_blend = (top.kind == KIND_OBJ) && obj.blend;
+        if !(window.blend || object_blend) {
+            // No blending in this window.
+            return top.color;
+        }
+
         let blend_mode = if object_blend {
             BlendMode::Normal
         } else {

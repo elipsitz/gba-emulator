@@ -83,6 +83,10 @@ pub struct Ppu {
     /// OAM - Object Attribute Memory - 1 KiB
     pub oam: Box<[u8]>,
 
+    /// Whether the rectangle windows are enabled for the current scanline.
+    /// This is updated on each scanline.
+    pub window_scanline_active: [bool; 2],
+
     /// Current frame.
     #[allow(unused)]
     pub frame: usize,
@@ -108,6 +112,7 @@ impl Ppu {
             bldy: BlendFade::default(),
             vcount: 0,
             frame: 0,
+            window_scanline_active: [false; 2],
 
             // 96KiB, but we'll make it 128KiB for accesses
             vram: vec![0; 128 * 1024].into_boxed_slice(),
@@ -137,6 +142,16 @@ impl Gba {
         self.ppu.dispstat.vcounter = self.ppu.dispstat.vcount_setting == new_vcount;
         if self.ppu.dispstat.vcounter_irq && self.ppu.dispstat.vcounter {
             self.interrupt_raise(InterruptKind::VCount);
+        }
+
+        // Update window scanlines.
+        for i in 0..2 {
+            if new_vcount as u8 == self.ppu.win_v[i].min {
+                self.ppu.window_scanline_active[i] = true;
+            }
+            if new_vcount as u8 == self.ppu.win_v[i].max {
+                self.ppu.window_scanline_active[i] = false;
+            }
         }
     }
 

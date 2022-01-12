@@ -68,6 +68,11 @@ impl DisplayControl {
             | ((self.window_display[1] as u16) << 14)
             | ((self.obj_window_display as u16) << 15)
     }
+
+    /// Returns whether any windows are enabled.
+    pub fn windows_enabled(&self) -> bool {
+        self.window_display[0] || self.window_display[1] || self.obj_window_display
+    }
 }
 
 /// DISPSTAT - General LCD Status
@@ -344,10 +349,19 @@ impl WindowBounds {
         self.min = ((val & 0xFF00) >> 8) as u8;
         self.max = val as u8;
     }
+
+    pub fn test(self, x: usize) -> bool {
+        let x = x as u8;
+        if self.min <= self.max {
+            x >= self.min && x < self.max
+        } else {
+            x >= self.min || x < self.max
+        }
+    }
 }
 
-#[derive(Default)]
-/// Part of WINOUT/WININ -- control for a single register.
+#[derive(Copy, Clone, Default)]
+/// Part of WINOUT/WININ -- control for a single window.
 pub struct WindowControl {
     /// Whether the given layer is enabled in this window.
     pub layer: [bool; 5],
@@ -356,6 +370,14 @@ pub struct WindowControl {
 }
 
 impl WindowControl {
+    /// Get the window control flags for no window at all (everything enabled).
+    pub fn none() -> WindowControl {
+        WindowControl {
+            layer: [true; 5],
+            blend: true,
+        }
+    }
+
     pub fn write(&mut self, val: u16) {
         for i in 0..5 {
             self.layer[i] = val.bit(i);

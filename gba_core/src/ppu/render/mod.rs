@@ -25,15 +25,20 @@ struct ObjectBufferEntry {
     pub color: Color15,
     pub priority: u16,
     pub blend: bool,
+    pub window: bool,
 }
 
 impl ObjectBufferEntry {
     fn set(&mut self, color: Color15, attributes: &objects::ObjectAttributes) {
-        let priority = attributes.priority();
-        if priority < self.priority {
-            self.color = color;
-            self.priority = priority;
-            self.blend = attributes.gfx_mode() == objects::GraphicsMode::Blend;
+        if attributes.window() {
+            self.window = true;
+        } else {
+            let priority = attributes.priority();
+            if priority < self.priority {
+                self.color = color;
+                self.priority = priority;
+                self.blend = attributes.gfx_mode() == objects::GraphicsMode::Blend;
+            }
         }
     }
 }
@@ -44,6 +49,7 @@ impl Default for ObjectBufferEntry {
             color: Color15::TRANSPARENT,
             priority: u16::MAX,
             blend: false,
+            window: false,
         }
     }
 }
