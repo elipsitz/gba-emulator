@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use crate::{
     interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cartridge, Cpu, Dma, Event,
     Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
@@ -13,7 +15,7 @@ pub struct Gba {
     /// The 16 KiB BIOS ROM.
     pub(crate) bios_rom: Box<[u8]>,
     /// The cartridge backup file.
-    pub(crate) cart_backup_file: Box<dyn BackupFile>,
+    pub(crate) cart_backup_file: Option<Box<dyn BackupFile>>,
 
     /// CPU state.
     pub(crate) cpu: Cpu,
@@ -80,15 +82,11 @@ impl Gba {
 
     /// Create a new GBA emulator from the builder.
     fn build(builder: GbaBuilder) -> Gba {
-        let cart_backup_file = builder
-            .backup_file
-            .unwrap_or_else(|| Box::new(crate::cartridge::MemoryBackupFile::default()));
-
         let cartridge = Cartridge::new(&builder.cart_rom);
         let mut gba = Gba {
             cart_rom: builder.cart_rom,
             bios_rom: builder.bios_rom,
-            cart_backup_file,
+            cart_backup_file: builder.backup_file,
 
             cpu: Cpu::new(),
             bus: Bus::new(),
@@ -105,9 +103,11 @@ impl Gba {
             keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
-        gba.cartridge
-            .backup
-            .initialize_file(&mut gba.cart_backup_file);
+
+        // Load the backup file.
+        if let Some(backup_file) = gba.cart_backup_file.as_mut() {
+            gba.cartridge.backup_buffer.load(backup_file.deref_mut());
+        }
 
         if builder.skip_bios {
             gba.cpu.skip_bios();
@@ -175,6 +175,11 @@ impl Gba {
         let run_cycles = frame_cycles - self.last_frame_overshoot;
         let actually_ran = self.run(run_cycles);
         self.last_frame_overshoot = actually_ran - run_cycles;
+
+        // Persist the backup buffer (if it's dirty).
+        if let Some(backup_file) = self.cart_backup_file.as_mut() {
+            self.cartridge.backup_buffer.save(backup_file.deref_mut());
+        }
     }
 
     /// Get the frame buffer.

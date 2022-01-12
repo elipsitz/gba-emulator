@@ -1,10 +1,9 @@
 use std::{
     fs,
-    io::{Read, Seek, SeekFrom, Write},
     time::{Duration, Instant},
 };
 
-use gba_core::{BackupFile, Gba, KeypadState};
+use gba_core::{Gba, KeypadState};
 
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -138,52 +137,6 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
     Ok(())
 }
 
-fn make_backup_file(path: String) -> Box<dyn BackupFile> {
-    /// File-backed BackupFile.
-    struct DiskBackup {
-        path: String,
-        file: Option<fs::File>,
-        buffer: Vec<u8>,
-    }
-
-    impl BackupFile for DiskBackup {
-        fn initialize(&mut self, size: usize) {
-            self.buffer.resize(size, 0);
-            let mut file = fs::File::options()
-                .create(true)
-                .read(true)
-                .write(true)
-                .open(&self.path)
-                .expect("Failed to open backup file");
-            let file_size = file.seek(SeekFrom::End(0)).unwrap() as usize;
-            let to_read = file_size.min(size);
-            file.seek(SeekFrom::Start(0)).unwrap();
-            file.read_exact(&mut self.buffer[..to_read]).unwrap();
-            file.seek(SeekFrom::Start(0)).unwrap();
-            file.write_all(&self.buffer).unwrap();
-            self.file = Some(file);
-        }
-
-        fn read(&mut self, offset: usize, buffer: &mut [u8]) {
-            buffer.copy_from_slice(&self.buffer[offset..(offset + buffer.len())]);
-        }
-
-        fn write(&mut self, offset: usize, data: &[u8]) {
-            self.buffer[offset..(offset + data.len())].copy_from_slice(&data);
-            if let Some(file) = &mut self.file {
-                file.seek(SeekFrom::Start(offset as u64)).unwrap();
-                file.write_all(data).unwrap();
-            }
-        }
-    }
-
-    Box::new(DiskBackup {
-        path,
-        file: None,
-        buffer: Vec::new(),
-    })
-}
-
 fn main() {
     let args = std::env::args().collect::<Vec<_>>();
     if args.len() != 2 {
@@ -201,7 +154,7 @@ fn main() {
     println!("Loaded {:?}", rom);
 
     let backup_path = format!("{}.sav", rom_path);
-    let backup_file = make_backup_file(backup_path);
+    let backup_file = gba_core::util::make_backup_file(backup_path);
 
     let gba = gba_core::Gba::builder(bios.into(), rom)
         .skip_bios(true)

@@ -1,5 +1,3 @@
-use std::ops::DerefMut;
-
 use crate::Rom;
 
 mod flash;
@@ -50,8 +48,8 @@ impl BackupType {
 
 /// Backing storage for the cartridge backup.
 pub trait BackupFile {
-    /// Initialize the file for use, with the given size.
-    fn initialize(&mut self, size: usize);
+    /// Get the size of the file.
+    fn size(&self) -> usize;
 
     /// Read bytes from the given offset into the buffer.
     fn read(&mut self, offset: usize, buffer: &mut [u8]);
@@ -60,23 +58,46 @@ pub trait BackupFile {
     fn write(&mut self, offset: usize, data: &[u8]);
 }
 
-/// Dummy backup file implementation that stores data in memory.
+/// In-memory buffer for the backup file.
 #[derive(Default)]
-pub struct MemoryBackupFile {
+pub struct BackupBuffer {
     pub storage: Vec<u8>,
+
+    /// Whether the buffer has unwritten data.
+    pub dirty: bool,
 }
 
-impl BackupFile for MemoryBackupFile {
-    fn initialize(&mut self, size: usize) {
-        self.storage.resize(size, 0u8);
+impl BackupBuffer {
+    /// Read a byte from the backup buffer.
+    pub fn read(&mut self, address: usize) -> u8 {
+        if address < self.storage.len() {
+            self.storage[address]
+        } else {
+            0xFF
+        }
     }
 
-    fn read(&mut self, offset: usize, buffer: &mut [u8]) {
-        buffer.copy_from_slice(&self.storage[offset..(offset + buffer.len())])
+    /// Write a byte to the backup buffer.
+    pub fn write(&mut self, address: usize, data: u8) {
+        if address >= self.storage.len() {
+            self.storage.resize(address + 1, 0xFF);
+        }
+        self.storage[address] = data;
+        self.dirty = true;
     }
 
-    fn write(&mut self, offset: usize, data: &[u8]) {
-        self.storage[offset..(offset + data.len())].copy_from_slice(data);
+    /// Persist any unwritten data to the file.
+    pub fn save(&self, file: &mut dyn BackupFile) {
+        if self.dirty {
+            file.write(0, &self.storage);
+        }
+    }
+
+    /// Load from the backup file.
+    pub fn load(&mut self, file: &mut dyn BackupFile) {
+        let size = file.size();
+        self.storage.resize(size, 0xFF);
+        file.read(0, &mut self.storage);
     }
 }
 
@@ -98,16 +119,6 @@ impl Backup {
             BackupType::Eeprom => Backup::Eeprom,
             BackupType::Flash64K => Backup::Flash(FlashBackup::new(FlashSize::Flash64K)),
             BackupType::Flash128K => Backup::Flash(FlashBackup::new(FlashSize::Flash128K)),
-        }
-    }
-
-    /// Initializes the backup file to the appropriate size.
-    pub fn initialize_file(&self, file: &mut Box<dyn BackupFile>) {
-        match self {
-            Backup::None => {}
-            Backup::Sram => file.initialize(32 * 1024),
-            Backup::Eeprom => {}
-            Backup::Flash(flash) => flash.initialize_file(file.deref_mut()),
         }
     }
 }

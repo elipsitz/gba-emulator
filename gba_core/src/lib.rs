@@ -10,6 +10,7 @@ mod mem;
 mod ppu;
 mod scheduler;
 mod timer;
+pub mod util;
 
 use bus::Bus;
 use cartridge::Cartridge;

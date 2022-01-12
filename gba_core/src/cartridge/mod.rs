@@ -1,41 +1,39 @@
 mod backup;
 mod rom;
 
-use std::ops::DerefMut;
-
-pub use backup::{BackupFile, BackupType, MemoryBackupFile};
+pub use backup::{BackupFile, BackupType};
 pub use rom::Rom;
 
-use backup::Backup;
+use backup::{Backup, BackupBuffer};
 
 use crate::{bus, Gba};
 
 /// State for a GamePak cartridge.
 pub struct Cartridge {
+    /// State for the current cartridge backup.
     pub backup: Backup,
+
+    /// In memory storage for the backup.
+    pub backup_buffer: BackupBuffer,
 }
 
 impl Cartridge {
     pub fn new(rom: &Rom) -> Cartridge {
         let backup_type = BackupType::detect(&rom);
-        let backup = Backup::new(backup_type);
-        Cartridge { backup }
+        Cartridge {
+            backup: Backup::new(backup_type),
+            backup_buffer: BackupBuffer::default(),
+        }
     }
 }
 
 impl Gba {
     pub(crate) fn cart_read_8(&mut self, addr: u32) -> u8 {
+        let backup_buffer = &mut self.cartridge.backup_buffer;
         match bus::region_from_address(addr) {
             bus::REGION_SRAM | bus::REGION_CART_UNUSED => match &mut self.cartridge.backup {
-                Backup::Sram => {
-                    let mut data = 0;
-                    let file = &mut self.cart_backup_file;
-                    file.read((addr & 0x7FFF) as usize, std::slice::from_mut(&mut data));
-                    data
-                }
-                Backup::Flash(flash) => {
-                    flash.read_8(addr & 0xFFFF, self.cart_backup_file.deref_mut())
-                }
+                Backup::Sram => backup_buffer.read((addr & 0x7FFF) as usize),
+                Backup::Flash(flash) => flash.read_8(addr & 0xFFFF, backup_buffer),
                 _ => 0,
             },
             _ => {
@@ -54,14 +52,14 @@ impl Gba {
     }
 
     pub(crate) fn cart_write_8(&mut self, addr: u32, value: u8) {
+        let backup_buffer = &mut self.cartridge.backup_buffer;
         match bus::region_from_address(addr) {
             bus::REGION_SRAM | bus::REGION_CART_UNUSED => match &mut self.cartridge.backup {
                 Backup::Sram => {
-                    let file = &mut self.cart_backup_file;
-                    file.write((addr & 0x7FFF) as usize, &[value]);
+                    backup_buffer.write((addr & 0x7FFF) as usize, value);
                 }
                 Backup::Flash(flash) => {
-                    flash.write_8(addr & 0xFFFF, value, self.cart_backup_file.deref_mut());
+                    flash.write_8(addr & 0xFFFF, value, backup_buffer);
                 }
                 _ => {}
             },

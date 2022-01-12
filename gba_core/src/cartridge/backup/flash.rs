@@ -1,4 +1,4 @@
-use super::BackupFile;
+use super::BackupBuffer;
 
 #[derive(Copy, Clone)]
 pub enum FlashSize {
@@ -72,22 +72,16 @@ impl FlashBackup {
         }
     }
 
-    pub fn initialize_file(&self, file: &mut dyn BackupFile) {
-        file.initialize(self.size.bytes());
-    }
-
-    pub fn read_8(&mut self, addr: u32, file: &mut dyn BackupFile) -> u8 {
+    pub fn read_8(&mut self, addr: u32, buffer: &mut BackupBuffer) -> u8 {
         if self.chip_identification && addr < 2 {
             self.size.id()[addr as usize]
         } else {
             let offset = self.address(addr & 0xFFFF);
-            let mut data = 0;
-            file.read(offset, std::slice::from_mut(&mut data));
-            data
+            buffer.read(offset)
         }
     }
 
-    pub fn write_8(&mut self, addr: u32, data: u8, file: &mut dyn BackupFile) {
+    pub fn write_8(&mut self, addr: u32, data: u8, buffer: &mut BackupBuffer) {
         use CommandState::*;
         match (self.command, addr, data) {
             (Ready, 0x5555, 0xAA) => self.command = Setup1,
@@ -110,7 +104,7 @@ impl FlashBackup {
             (Setup2, 0x5555, 0xA0) => self.command = WriteByte,
             (WriteByte, address, data) => {
                 let offset = self.address(address & 0xFFFF);
-                file.write(offset, &[data]);
+                buffer.write(offset, data);
                 self.command = Ready;
             }
             (Setup2, 0x5555, 0x80) => {
@@ -122,7 +116,7 @@ impl FlashBackup {
                 // Erase entire chip.
                 if self.erase_mode {
                     for i in 0..self.size.bytes() {
-                        file.write(i, &[0xFF]);
+                        buffer.write(i, 0xFF);
                     }
                 }
                 self.command = Ready;
@@ -133,7 +127,7 @@ impl FlashBackup {
                 if self.erase_mode {
                     let sector = self.address(addr & 0xF000);
                     for i in sector..(sector + 4 * 1024) {
-                        file.write(i, &[0xFF]);
+                        buffer.write(i, 0xFF);
                     }
                 }
                 self.command = Ready;
