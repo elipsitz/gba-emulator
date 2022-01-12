@@ -8,6 +8,13 @@ pub const HEIGHT: usize = 160;
 
 /// Game Boy Advance Emulator
 pub struct Gba {
+    /// The cartridge ROM.
+    pub(crate) cart_rom: Rom,
+    /// The 16 KiB BIOS ROM.
+    pub(crate) bios_rom: Box<[u8]>,
+    /// The cartridge backup file.
+    pub(crate) cart_backup_file: Box<dyn BackupFile>,
+
     /// CPU state.
     pub(crate) cpu: Cpu,
 
@@ -34,9 +41,6 @@ pub struct Gba {
 
     /// The cartridge.
     pub(crate) cartridge: Cartridge,
-
-    /// The 16 KiB BIOS ROM.
-    pub(crate) bios_rom: Box<[u8]>,
 
     /// On-board ("external") work RAM.
     pub(crate) ewram: [u8; 256 * 1024],
@@ -76,8 +80,16 @@ impl Gba {
 
     /// Create a new GBA emulator from the builder.
     fn build(builder: GbaBuilder) -> Gba {
-        let cartridge = Cartridge::new(builder.cart_rom, builder.backup_file);
+        let cart_backup_file = builder
+            .backup_file
+            .unwrap_or_else(|| Box::new(crate::cartridge::MemoryBackupFile::default()));
+
+        let cartridge = Cartridge::new(&builder.cart_rom);
         let mut gba = Gba {
+            cart_rom: builder.cart_rom,
+            bios_rom: builder.bios_rom,
+            cart_backup_file,
+
             cpu: Cpu::new(),
             bus: Bus::new(),
             scheduler: Scheduler::new(),
@@ -87,13 +99,15 @@ impl Gba {
             dma: Dma::new(),
             timer: TimerManager::new(),
             cartridge,
-            bios_rom: builder.bios_rom,
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
             last_frame_overshoot: 0,
             keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
+        gba.cartridge
+            .backup
+            .initialize_file(&mut gba.cart_backup_file);
 
         if builder.skip_bios {
             gba.cpu.skip_bios();

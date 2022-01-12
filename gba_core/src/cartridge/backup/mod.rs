@@ -1,3 +1,5 @@
+use std::ops::DerefMut;
+
 use crate::Rom;
 
 mod flash;
@@ -81,24 +83,31 @@ impl BackupFile for MemoryBackupFile {
 /// A concrete cartridge backup.
 pub enum Backup {
     None,
-    Sram(Box<dyn BackupFile>),
+    Sram,
     Eeprom,
     Flash(FlashBackup),
 }
 
 impl Backup {
-    /// Construct a new backup from a backup file and type.
-    pub fn new(backup_type: BackupType, mut file: Box<dyn BackupFile>) -> Backup {
+    /// Construct a new backup state from a backup type.
+    pub fn new(backup_type: BackupType) -> Backup {
         match backup_type {
             BackupType::None => Backup::None,
-            BackupType::Sram => {
-                file.initialize(32 * 1024);
-                Backup::Sram(file)
-            }
+            BackupType::Sram => Backup::Sram,
             // TODO: implement Eeprom.
             BackupType::Eeprom => Backup::Eeprom,
-            BackupType::Flash64K => Backup::Flash(FlashBackup::new(FlashSize::Flash64K, file)),
-            BackupType::Flash128K => Backup::Flash(FlashBackup::new(FlashSize::Flash128K, file)),
+            BackupType::Flash64K => Backup::Flash(FlashBackup::new(FlashSize::Flash64K)),
+            BackupType::Flash128K => Backup::Flash(FlashBackup::new(FlashSize::Flash128K)),
+        }
+    }
+
+    /// Initializes the backup file to the appropriate size.
+    pub fn initialize_file(&self, file: &mut Box<dyn BackupFile>) {
+        match self {
+            Backup::None => {}
+            Backup::Sram => file.initialize(32 * 1024),
+            Backup::Eeprom => {}
+            Backup::Flash(flash) => flash.initialize_file(file.deref_mut()),
         }
     }
 }
