@@ -39,6 +39,7 @@ fn get_keypad_state(event_pump: &sdl2::EventPump) -> KeypadState {
 fn run_emulator(mut gba: Gba) -> Result<(), String> {
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
+    let audio_subsystem = sdl_context.audio()?;
 
     let window = video_subsystem
         .window("GBA", WIDTH * SCALE, HEIGHT * SCALE)
@@ -60,6 +61,14 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
         .map_err(|e| e.to_string())?;
     canvas.set_draw_color(Color::RGB(0, 0, 0));
     canvas.clear();
+
+    let audio_spec_desired = sdl2::audio::AudioSpecDesired {
+        freq: Some(gba_core::AUDIO_SAMPLE_RATE as i32),
+        channels: Some(2),
+        samples: None,
+    };
+    let audio_device = audio_subsystem.open_queue::<i16, _>(None, &audio_spec_desired)?;
+    audio_device.resume();
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
@@ -119,6 +128,16 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                 .map_err(|e| e.to_string())?;
             canvas.copy(&texture, None, None)?;
             canvas.present();
+
+            // Each "sample frame" is a sample from (left, right) -- 4 bytes.
+            let samples_queued = (audio_device.size() as usize) / 4;
+            // Target maximum of 8 frames of samples in the buffer.
+            let samples_max = 8 * gba_core::AUDIO_SAMPLE_RATE / 60;
+            if samples_queued < samples_max {
+                let buffer = gba.audio_buffer();
+                let to_add = usize::min(buffer.len(), samples_max - samples_queued);
+                audio_device.queue(&buffer[..to_add]);
+            }
         } else {
             last_event = Some(event_pump.wait_event());
         }

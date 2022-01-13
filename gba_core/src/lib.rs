@@ -1,3 +1,4 @@
+mod apu;
 mod bus;
 mod cartridge;
 mod cpu;
@@ -23,6 +24,7 @@ use ppu::Ppu;
 use scheduler::{Event, Scheduler};
 use timer::TimerManager;
 
+pub use apu::AUDIO_SAMPLE_RATE;
 pub use cartridge::{BackupFile, Rom};
 pub use gba::{Gba, HEIGHT, WIDTH};
 pub use keypad::KeypadState;

@@ -187,6 +187,12 @@ impl Gba {
     pub fn framebuffer(&self) -> &[u32] {
         &self.ppu.framebuffer
     }
+
+    /// Get the audio samples created during the last frame.
+    /// This is a sequence of samples, interleaving the left and right channels.
+    pub fn audio_buffer(&self) -> &[i16] {
+        &[]
+    }
 }
 
 impl GbaBuilder {
