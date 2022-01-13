@@ -22,6 +22,9 @@ pub enum Event {
 
     /// Timers need to be updated.
     TimerUpdate,
+
+    /// Emit an audio sample.
+    AudioSample,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

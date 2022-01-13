@@ -13,6 +13,7 @@ mod scheduler;
 mod timer;
 pub mod util;
 
+use apu::Apu;
 use bus::Bus;
 use cartridge::Cartridge;
 use cpu::Cpu;

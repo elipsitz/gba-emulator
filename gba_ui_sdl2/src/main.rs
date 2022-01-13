@@ -135,7 +135,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
             let samples_max = 8 * gba_core::AUDIO_SAMPLE_RATE / 60;
             if samples_queued < samples_max {
                 let buffer = gba.audio_buffer();
-                let to_add = usize::min(buffer.len(), samples_max - samples_queued);
+                let to_add = buffer.len().min((samples_max - samples_queued) * 2);
                 audio_device.queue(&buffer[..to_add]);
             }
         } else {

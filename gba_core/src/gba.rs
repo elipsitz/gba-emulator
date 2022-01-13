@@ -1,8 +1,8 @@
 use std::ops::DerefMut;
 
 use crate::{
-    interrupt::InterruptManager, io::CpuPowerState, BackupFile, Bus, Cartridge, Cpu, Dma, Event,
-    Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
+    interrupt::InterruptManager, io::CpuPowerState, Apu, BackupFile, Bus, Cartridge, Cpu, Dma,
+    Event, Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
 };
 
 pub const WIDTH: usize = 240;
@@ -31,6 +31,9 @@ pub struct Gba {
 
     /// PPU state.
     pub(crate) ppu: Ppu,
+
+    /// APU (sound) state.
+    pub(crate) apu: Apu,
 
     /// Interrupt manager state.
     pub(crate) interrupt: InterruptManager,
@@ -93,6 +96,7 @@ impl Gba {
             scheduler: Scheduler::new(),
             io: Io::new(),
             ppu: Ppu::new(),
+            apu: Apu::new(),
             interrupt: InterruptManager::new(),
             dma: Dma::new(),
             timer: TimerManager::new(),
@@ -103,6 +107,7 @@ impl Gba {
             keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
+        gba.apu_init();
 
         // Load the backup file.
         if let Some(backup_file) = gba.cart_backup_file.as_mut() {
@@ -161,6 +166,7 @@ impl Gba {
                     // TODO maybe handle lateness?
                     Event::DmaActivate(channel) => self.dma_activate_channel(channel as usize),
                     Event::TimerUpdate => self.timer_handle_event(),
+                    Event::AudioSample => self.apu_on_sample_event(lateness),
                 }
             }
         }
@@ -171,6 +177,8 @@ impl Gba {
 
     /// Emulate a frame.
     pub fn emulate_frame(&mut self) {
+        self.apu_buffer_clear();
+
         let frame_cycles = (240 + 68) * (160 + 68) * 4;
         let run_cycles = frame_cycles - self.last_frame_overshoot;
         let actually_ran = self.run(run_cycles);
@@ -191,7 +199,7 @@ impl Gba {
     /// Get the audio samples created during the last frame.
     /// This is a sequence of samples, interleaving the left and right channels.
     pub fn audio_buffer(&self) -> &[i16] {
-        &[]
+        self.apu_buffer()
     }
 }
 
