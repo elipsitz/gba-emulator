@@ -25,7 +25,7 @@ pub struct TimerManager {
 }
 
 /// A single timer.
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct Timer {
     /// Current count of the timer.
     count: u16,
@@ -58,6 +58,17 @@ impl TimerControl {
     /// Returns if this timer is enabled.
     fn enabled(self) -> bool {
         self.0.bit(7)
+    }
+}
+
+impl std::fmt::Debug for TimerControl {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("TimerControl")
+            .field("period", &self.period())
+            .field("cascade", &self.cascade())
+            .field("irq", &self.irq())
+            .field("enabled", &self.enabled())
+            .finish()
     }
 }
 
@@ -117,6 +128,7 @@ impl Gba {
                     last_overflows = 1 + ((increment - time_to_overflow) / period);
                 } else {
                     timer.count += increment as u16;
+                    last_overflows = 0;
                 }
 
                 if last_overflows > 0 {
