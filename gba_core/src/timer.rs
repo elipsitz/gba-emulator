@@ -119,18 +119,18 @@ impl Gba {
                     timer.count += increment as u16;
                 }
 
-                if last_overflows > 0 {
+                if last_overflows > 0 && timer.control.irq() {
                     self.interrupt_raise(INTERRUPTS[i]);
                 }
             }
         }
     }
 
-    /// Calculate how many cycles until the next time we may have to fire an IRQ.
+    /// Calculate how many cycles until the next time we may have to fire an IRQ
+    /// (or have the APU update a DMA channel).
     fn calculate_next_irq(&mut self) -> Option<usize> {
         // Early return: if no enabled timers have IRQ set, no IRQ needed.
-        let irq_possible = (0..NUM_TIMERS)
-            .any(|i| self.timer.timers[i].control.enabled() && self.timer.timers[i].control.irq());
+        let irq_possible = (0..NUM_TIMERS).any(|i| self.timer_overflow_visible(i));
         if !irq_possible {
             return None;
         }
@@ -161,8 +161,10 @@ impl Gba {
                     let next_overflow = tick_period * needed_next;
                     last_overflow = Some((first_overflow, next_overflow));
 
-                    if next_overflow < first_irq.unwrap_or(usize::MAX) {
-                        first_irq = Some(next_overflow);
+                    if timer.control.irq() {
+                        if next_overflow < first_irq.unwrap_or(usize::MAX) {
+                            first_irq = Some(next_overflow);
+                        }
                     }
                 } else {
                     last_overflow = None;
@@ -174,6 +176,14 @@ impl Gba {
         }
 
         first_irq
+    }
+
+    /// Returns whether a timer's overflow is externally visible (i.e. causes an IRQ
+    /// or affects the APU), and thus requires the scheduler to tell us when it happens.
+    fn timer_overflow_visible(&self, index: usize) -> bool {
+        let enabled = self.timer.timers[index].control.enabled();
+        let event = self.timer.timers[index].control.irq();
+        enabled && event
     }
 
     /// Schedule an event to make us update timers when there's an IRQ.
