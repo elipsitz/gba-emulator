@@ -1,6 +1,11 @@
 use std::hint::unreachable_unchecked;
 
-use crate::{bus::MemoryAccessType, interrupt::InterruptKind, Gba};
+use crate::{
+    bus::MemoryAccessType,
+    interrupt::InterruptKind,
+    io::{REG_FIFO_A, REG_FIFO_B},
+    Gba,
+};
 use bit::BitIndex;
 
 const NUM_CHANNELS: usize = 4;
@@ -25,6 +30,8 @@ struct DmaChannel {
 
     /// Next access type.
     access_type: MemoryAccessType,
+    /// Whether this is set up for FIFO.
+    fifo: bool,
 
     /// Internal source address register.
     internal_src: u32,
@@ -42,6 +49,7 @@ impl Default for DmaChannel {
             count: 0,
             control: DmaChannelControl(0),
             access_type: MemoryAccessType::NonSequential,
+            fifo: false,
             internal_src: 0,
             internal_dest: 0,
             internal_count: 0,
@@ -161,7 +169,16 @@ impl Gba {
         let access = channel.access_type;
         let src = channel.internal_src;
         let dest = channel.internal_dest;
-        let word_size = channel.control.word_size() as u32;
+        let mut word_size = channel.control.word_size() as u32;
+        let mut src_adjust = channel.control.src_adjustment();
+        let mut dest_adjust = channel.control.dest_adjustment();
+
+        if channel.fifo {
+            word_size = 4;
+            src_adjust = AdjustmentMode::Increment;
+            dest_adjust = AdjustmentMode::Fixed;
+        }
+
         if word_size == 2 {
             let data = self.cpu_load16(src & !0b1, access);
             self.cpu_store16(dest & !0b1, data, access);
@@ -173,13 +190,13 @@ impl Gba {
         // Update the state.
         let mut channel = &mut self.dma.channels[index];
         channel.access_type = MemoryAccessType::Sequential;
-        match channel.control.src_adjustment() {
+        match src_adjust {
             AdjustmentMode::Fixed => {}
             AdjustmentMode::Decrement => channel.internal_src = src.wrapping_sub(word_size),
             AdjustmentMode::Increment => channel.internal_src = src.wrapping_add(word_size),
             _ => unreachable!(),
         };
-        match channel.control.dest_adjustment() {
+        match dest_adjust {
             AdjustmentMode::Fixed => {}
             AdjustmentMode::Decrement => channel.internal_dest = dest.wrapping_sub(word_size),
             AdjustmentMode::Increment | AdjustmentMode::IncrementReload => {
@@ -268,6 +285,10 @@ impl Gba {
                     } else {
                         c.count as u32
                     };
+                    c.fifo = (control.timing() == TimingMode::Special)
+                        && control.repeat()
+                        && (channel_index == 1 || channel_index == 2)
+                        && (c.dest == REG_FIFO_A || c.dest == REG_FIFO_B);
 
                     // TODO: DMA Sound FIFO?
                     if control.timing() == TimingMode::Immediate {
@@ -312,6 +333,20 @@ impl Gba {
         for i in 0..NUM_CHANNELS {
             let channel = &self.dma.channels[i];
             if channel.control.enabled() && channel.control.timing() == TimingMode::HBlank {
+                self.dma_activate_channel(i);
+            }
+        }
+    }
+
+    /// Called by the APU when it's requesting DMA to a FIFO.
+    pub(crate) fn dma_notify_audio_fifo(&mut self, addr: u32) {
+        // DMA channels 1 and 2 could support audio FIFO.
+        for i in 1..=2 {
+            let channel = &self.dma.channels[i];
+            if channel.control.enabled()
+                && channel.control.timing() == TimingMode::Special
+                && channel.dest == addr
+            {
                 self.dma_activate_channel(i);
             }
         }

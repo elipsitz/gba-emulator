@@ -89,7 +89,7 @@ impl Gba {
     /// This may result in interrupts. For accurate timing, this should be called
     /// as soon as possible after an interrupt would happen (using the
     /// [`calculate_next_irq`] function).
-    fn update_timers(&mut self) {
+    pub(crate) fn timer_update(&mut self) {
         let last_update = self.timer.last_update;
         let steps = self.scheduler.timestamp() - last_update;
         self.timer.last_update = self.scheduler.timestamp();
@@ -119,8 +119,14 @@ impl Gba {
                     timer.count += increment as u16;
                 }
 
-                if last_overflows > 0 && timer.control.irq() {
-                    self.interrupt_raise(INTERRUPTS[i]);
+                if last_overflows > 0 {
+                    if timer.control.irq() {
+                        self.interrupt_raise(INTERRUPTS[i]);
+                    }
+                    if i == 0 || i == 1 {
+                        // XXX: do something different if it overflows multiple times?
+                        self.apu_on_timer_overflow(i);
+                    }
                 }
             }
         }
@@ -161,7 +167,7 @@ impl Gba {
                     let next_overflow = tick_period * needed_next;
                     last_overflow = Some((first_overflow, next_overflow));
 
-                    if timer.control.irq() {
+                    if self.timer_overflow_visible(i) {
                         if next_overflow < first_irq.unwrap_or(usize::MAX) {
                             first_irq = Some(next_overflow);
                         }
@@ -182,7 +188,7 @@ impl Gba {
     /// or affects the APU), and thus requires the scheduler to tell us when it happens.
     fn timer_overflow_visible(&self, index: usize) -> bool {
         let enabled = self.timer.timers[index].control.enabled();
-        let event = self.timer.timers[index].control.irq();
+        let event = self.timer.timers[index].control.irq() || self.apu_needs_timer(index);
         enabled && event
     }
 
@@ -200,23 +206,23 @@ impl Gba {
 
     /// Handle a scheduler timer update event.
     pub(crate) fn timer_handle_event(&mut self) {
-        self.update_timers();
+        self.timer_update();
         self.schedule_irq_event(false);
     }
 
     pub(crate) fn timer_write_counter(&mut self, index: usize, value: u16) {
-        self.update_timers();
+        self.timer_update();
         self.timer.timers[index].initial_count = value;
         self.schedule_irq_event(true);
     }
 
     pub(crate) fn timer_read_counter(&mut self, index: usize) -> u16 {
-        self.update_timers();
+        self.timer_update();
         self.timer.timers[index].count
     }
 
     pub(crate) fn timer_write_control(&mut self, index: usize, value: u16) {
-        self.update_timers();
+        self.timer_update();
         let new = TimerControl(value);
         let old = self.timer.timers[index].control;
         if new.enabled() && !old.enabled() {

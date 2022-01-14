@@ -155,9 +155,14 @@ impl Gba {
     }
 
     pub fn io_write_32(&mut self, addr: u32, value: u32) {
-        // TODO handle write to APU FIFO registers.
-        self.io_write_16(addr, (value & 0xFFFF) as u16);
-        self.io_write_16(addr + 2, ((value >> 16) & 0xFFFF) as u16);
+        match addr {
+            REG_FIFO_A => self.apu_io_fifo_write(0, value),
+            REG_FIFO_B => self.apu_io_fifo_write(1, value),
+            _ => {
+                self.io_write_16(addr, (value & 0xFFFF) as u16);
+                self.io_write_16(addr + 2, ((value >> 16) & 0xFFFF) as u16);
+            }
+        }
     }
 
     pub fn io_read_8(&mut self, addr: u32) -> u8 {
