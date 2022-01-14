@@ -169,14 +169,18 @@ impl Gba {
         let access = channel.access_type;
         let src = channel.internal_src;
         let dest = channel.internal_dest;
-        let mut word_size = channel.control.word_size() as u32;
-        let mut src_adjust = channel.control.src_adjustment();
-        let mut dest_adjust = channel.control.dest_adjustment();
 
+        let word_size;
+        let src_adjust;
+        let dest_adjust;
         if channel.fifo {
             word_size = 4;
-            src_adjust = AdjustmentMode::Increment;
+            src_adjust = channel.control.src_adjustment();
             dest_adjust = AdjustmentMode::Fixed;
+        } else {
+            src_adjust = channel.control.src_adjustment();
+            word_size = channel.control.word_size() as u32;
+            dest_adjust = channel.control.dest_adjustment();
         }
 
         if word_size == 2 {
@@ -208,18 +212,22 @@ impl Gba {
         if channel.internal_count == 0 {
             // We completed the DMA.
             if channel.control.repeat() {
-                if channel.control.dest_adjustment() == AdjustmentMode::IncrementReload {
-                    channel.internal_dest = channel.dest;
-                }
-                channel.internal_count = if channel.count == 0 {
-                    if index == 3 {
-                        0x10000
-                    } else {
-                        0x4000
-                    }
+                if channel.fifo {
+                    channel.internal_count = 4;
                 } else {
-                    channel.count as u32
-                };
+                    if channel.control.dest_adjustment() == AdjustmentMode::IncrementReload {
+                        channel.internal_dest = channel.dest;
+                    }
+                    channel.internal_count = if channel.count == 0 {
+                        if index == 3 {
+                            0x10000
+                        } else {
+                            0x4000
+                        }
+                    } else {
+                        channel.count as u32
+                    };
+                }
             } else {
                 channel.control.set_enabled(false);
             }
@@ -285,17 +293,21 @@ impl Gba {
                     } else {
                         c.count as u32
                     };
+
+                    // Handle special audio FIFO mode.
                     c.fifo = (control.timing() == TimingMode::Special)
                         && control.repeat()
                         && (channel_index == 1 || channel_index == 2)
                         && (c.dest == REG_FIFO_A || c.dest == REG_FIFO_B);
+                    if c.fifo {
+                        c.internal_count = 4;
+                    }
 
-                    // TODO: DMA Sound FIFO?
                     if control.timing() == TimingMode::Immediate {
                         let event = crate::scheduler::Event::DmaActivate(channel_index as u8);
                         self.scheduler.push_event(event, 2);
                     }
-                    // TODO: implement TimingMode::Special
+                    // TODO: implement TimingMode::Special for non-AUDIO FIFO
                 }
 
                 c.control = control;

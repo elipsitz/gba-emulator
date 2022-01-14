@@ -176,7 +176,7 @@ fn main() {
     let backup_file = gba_core::util::make_backup_file(backup_path);
 
     let gba = gba_core::Gba::builder(bios.into(), rom)
-        .skip_bios(true)
+        //.skip_bios(true)
         .backup_file(backup_file)
         .build();
 
