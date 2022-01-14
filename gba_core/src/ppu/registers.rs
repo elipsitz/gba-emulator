@@ -414,7 +414,7 @@ impl WindowIn {
     }
 
     pub fn read(&self) -> u16 {
-        self.win0.read() | (self.win0.read() << 8)
+        self.win0.read() | (self.win1.read() << 8)
     }
 }
 
