@@ -10,11 +10,6 @@ pub struct Io {
     pub power_state: CpuPowerState,
     /// Value of the WAITCNT (wait control) register.
     pub waitcnt: WaitControl,
-
-    /// SOUNDBIAS register.
-    /// XXX: stubbed out as R/W to allow bios to boot.
-    /// TODO: implement this for readl.
-    soundbias: u16,
 }
 
 #[derive(Copy, Clone, PartialEq, Eq)]
@@ -33,7 +28,6 @@ impl Io {
             keycnt: 0,
             power_state: CpuPowerState::Normal,
             waitcnt: WaitControl(0),
-            soundbias: 0,
         }
     }
 }
@@ -65,7 +59,7 @@ impl Gba {
             REG_IF => self.interrupt.pending,
             REG_DMA_START..=REG_DMA_END => self.dma_reg_read(addr - REG_DMA_START),
             REG_WAITCNT => self.io.waitcnt.0,
-            REG_SOUNDBIAS => self.io.soundbias,
+            REG_SOUND_START..=REG_SOUND_END => self.apu_io_read(addr),
             _ => 0,
         }
     }
@@ -151,7 +145,7 @@ impl Gba {
                 self.io.waitcnt.0 = value & 0x7FFF;
                 self.bus.update_waitcnt(self.io.waitcnt);
             }
-            REG_SOUNDBIAS => self.io.soundbias = value,
+            REG_SOUND_START..=REG_SOUND_END => self.apu_io_write(addr, value),
             _ => {}
         }
     }
@@ -161,6 +155,7 @@ impl Gba {
     }
 
     pub fn io_write_32(&mut self, addr: u32, value: u32) {
+        // TODO handle write to APU FIFO registers.
         self.io_write_16(addr, (value & 0xFFFF) as u16);
         self.io_write_16(addr + 2, ((value >> 16) & 0xFFFF) as u16);
     }
@@ -328,4 +323,23 @@ pub const REG_HALTCNT: u32 = 0x0400_0301;
 pub const REG_DMA_START: u32 = 0x0400_00B0;
 pub const REG_DMA_END: u32 = 0x0400_00DE;
 
+pub const REG_SOUND1CNT_L: u32 = 0x0400_0060;
+pub const REG_SOUND1CNT_H: u32 = 0x0400_0062;
+pub const REG_SOUND1CNT_X: u32 = 0x0400_0064;
+pub const REG_SOUND2CNT_L: u32 = 0x0400_0068;
+pub const REG_SOUND2CNT_H: u32 = 0x0400_006C;
+pub const REG_SOUND3CNT_L: u32 = 0x0400_0070;
+pub const REG_SOUND3CNT_H: u32 = 0x0400_0072;
+pub const REG_SOUND3CNT_X: u32 = 0x0400_0074;
+pub const REG_SOUND4CNT_L: u32 = 0x0400_0078;
+pub const REG_SOUND4CNT_H: u32 = 0x0400_007C;
+pub const REG_SOUNDCNT_L: u32 = 0x0400_0080;
+pub const REG_SOUNDCNT_H: u32 = 0x0400_0082;
+pub const REG_SOUNDCNT_X: u32 = 0x0400_0084;
 pub const REG_SOUNDBIAS: u32 = 0x0400_0088;
+pub const REG_WAVE_RAM_START: u32 = 0x0400_0090;
+pub const REG_WAVE_RAM_END: u32 = 0x0400_009E;
+pub const REG_FIFO_A: u32 = 0x0400_00A0;
+pub const REG_FIFO_B: u32 = 0x0400_00A4;
+pub const REG_SOUND_START: u32 = REG_SOUND1CNT_L;
+pub const REG_SOUND_END: u32 = 0x0400_00A8;
