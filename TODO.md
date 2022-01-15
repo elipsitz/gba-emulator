@@ -1,14 +1,14 @@
 ## Planned
 * Save States
 * EEPROM Backup
-* Cartridge Prefetch
-* Sound
+* Sound: PSG
 * Better CLI
 * DMA: Special timing mode
-* DMA: Sound FIFO mode
+* Audio sync (with vsync)
 
 
 ## Maybe
 * Affine background Mosaic effect
 * Debugger
 * Link Cable
+* More accurate cartridge prefetch buffer

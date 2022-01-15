@@ -103,17 +103,26 @@ impl Bus {
 
     /// Update cycle timing tables after WAITCNT is updated.
     pub(crate) fn update_waitcnt(&mut self, waitcnt: WaitControl) {
-        let sram = [4, 3, 2, 8][waitcnt.sram() as usize];
         let ws0_n = [4, 3, 2, 8][waitcnt.ws0_nonsequential() as usize];
         let ws0_s = [2, 1][waitcnt.ws0_sequential() as usize];
         let ws1_n = [4, 3, 2, 8][waitcnt.ws1_nonsequential() as usize];
         let ws1_s = [4, 1][waitcnt.ws1_sequential() as usize];
         let ws2_n = [4, 3, 2, 8][waitcnt.ws2_nonsequential() as usize];
         let ws2_s = [8, 1][waitcnt.ws2_sequential() as usize];
-        // TODO handle prefetch buffer.
 
-        let wait_n = [ws0_n, ws1_n, ws2_n];
-        let wait_s = [ws0_s, ws1_s, ws2_s];
+        let sram = [4, 3, 2, 8][waitcnt.sram() as usize];
+        let wait_n;
+        let wait_s;
+        if waitcnt.prefetch() {
+            // Approximate prefetch buffer by removing all waits.
+            // TODO: more accurate handling of prefetch buffer.
+            wait_n = [0, 0, 0];
+            wait_s = [0, 0, 0];
+        } else {
+            wait_n = [ws0_n, ws1_n, ws2_n];
+            wait_s = [ws0_s, ws1_s, ws2_s];
+        }
+
         for region in REGION_CART_WS0_A..=REGION_CART_WS2_B {
             let ws = ((region - REGION_CART_WS0_A) / 2) as usize;
             self.wait_n16[region as usize] = 1 + wait_n[ws];
