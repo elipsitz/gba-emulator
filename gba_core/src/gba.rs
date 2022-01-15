@@ -167,6 +167,7 @@ impl Gba {
                     Event::DmaActivate(channel) => self.dma_activate_channel(channel as usize),
                     Event::TimerUpdate => self.timer_handle_event(),
                     Event::AudioSample => self.apu_on_sample_event(lateness),
+                    Event::AudioSequencerTick => self.apu_on_sequencer_event(lateness),
                 }
             }
         }

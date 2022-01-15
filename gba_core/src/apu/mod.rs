@@ -1,4 +1,4 @@
-mod dma;
+mod channel;
 mod registers;
 
 use crate::{
@@ -6,7 +6,8 @@ use crate::{
     scheduler::Event,
     Gba,
 };
-use dma::DmaChannel;
+use channel::DmaChannel;
+use channel::ToneChannel;
 
 /// Audio samples per second.
 pub const AUDIO_SAMPLE_RATE: usize = 32768;
@@ -24,6 +25,10 @@ pub struct Apu {
     /// Current sample index.
     sample: usize,
 
+    /// PSG Channel 1 - Tone & Sweep
+    tone1: ToneChannel,
+    /// PSG Channel 2 - Tone
+    tone2: ToneChannel,
     /// DMA audio channels
     dma: [DmaChannel; 2],
 
@@ -52,6 +57,8 @@ impl Apu {
             buffer: Vec::new(),
             sample: 0,
 
+            tone1: ToneChannel::new(),
+            tone2: ToneChannel::new(),
             dma: [DmaChannel::new(), DmaChannel::new()],
 
             psg_volume_left: 0,
@@ -70,6 +77,10 @@ impl Gba {
     pub(crate) fn apu_init(&mut self) {
         self.scheduler
             .push_event(Event::AudioSample, CYCLES_PER_SAMPLE);
+        self.scheduler.push_event(
+            Event::AudioSequencerTick,
+            channel::Sequencer::CYCLES_PER_TICK,
+        );
     }
 
     pub(crate) fn apu_on_sample_event(&mut self, lateness: usize) {
@@ -81,6 +92,20 @@ impl Gba {
             let (left, right) = self.emit_sample();
             self.apu.buffer.push(left);
             self.apu.buffer.push(right);
+        }
+    }
+
+    pub(crate) fn apu_on_sequencer_event(&mut self, lateness: usize) {
+        const CYCLES_PER_TICK: usize = channel::Sequencer::CYCLES_PER_TICK;
+        let ticks = 1 + (lateness / CYCLES_PER_TICK);
+        let next_tick = CYCLES_PER_TICK - (lateness % CYCLES_PER_TICK);
+        self.scheduler
+            .push_event(Event::AudioSequencerTick, next_tick);
+
+        for _ in 0..ticks {
+            self.apu.tone1.sequencer.tick();
+            self.apu.tone2.sequencer.tick();
+            // TODO tick channels 3 and 4 as well.
         }
     }
 

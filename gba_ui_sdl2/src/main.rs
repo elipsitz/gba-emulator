@@ -72,7 +72,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
-    let mut paused = false;
+    let mut paused = true;
     let mut single_step = false;
 
     let mut event_pump = sdl_context.event_pump()?;

@@ -25,6 +25,9 @@ pub enum Event {
 
     /// Emit an audio sample.
     AudioSample,
+
+    /// APU PSG channel sequencer step.
+    AudioSequencerTick,
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq)]

@@ -3,11 +3,16 @@ use bit::BitIndex;
 use crate::io::*;
 use crate::Gba;
 
-use super::{CHANNEL_LEFT, CHANNEL_RIGHT};
+use super::{channel::ToneRegister, CHANNEL_LEFT, CHANNEL_RIGHT};
 
 impl Gba {
     pub(crate) fn apu_io_write(&mut self, addr: u32, value: u16) {
         match addr {
+            REG_SOUND1CNT_L => self.apu.tone1.write_register(ToneRegister::Sweep, value),
+            REG_SOUND1CNT_H => self.apu.tone1.write_register(ToneRegister::Duty, value),
+            REG_SOUND1CNT_X => self.apu.tone1.write_register(ToneRegister::Freq, value),
+            REG_SOUND2CNT_L => self.apu.tone2.write_register(ToneRegister::Duty, value),
+            REG_SOUND2CNT_H => self.apu.tone2.write_register(ToneRegister::Freq, value),
             REG_SOUNDCNT_L => {
                 self.apu.psg_volume_right = value.bit_range(0..3);
                 self.apu.psg_volume_left = value.bit_range(4..7);
@@ -46,6 +51,11 @@ impl Gba {
 
     pub(crate) fn apu_io_read(&mut self, addr: u32) -> u16 {
         match addr {
+            REG_SOUND1CNT_L => self.apu.tone1.read_register(ToneRegister::Sweep),
+            REG_SOUND1CNT_H => self.apu.tone1.read_register(ToneRegister::Duty),
+            REG_SOUND1CNT_X => self.apu.tone1.read_register(ToneRegister::Freq),
+            REG_SOUND2CNT_L => self.apu.tone2.read_register(ToneRegister::Duty),
+            REG_SOUND2CNT_H => self.apu.tone2.read_register(ToneRegister::Freq),
             REG_SOUNDCNT_L => {
                 (self.apu.psg_volume_right << 0)
                     | (self.apu.psg_volume_left << 4)
