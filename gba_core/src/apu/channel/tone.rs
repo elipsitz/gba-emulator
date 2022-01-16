@@ -9,13 +9,16 @@ pub struct ToneChannel {
     pub sequencer: Sequencer,
 
     /// Wave duty type (0-3).
-    duty: u16,
+    duty: u8,
 }
 
+#[derive(Debug)]
 pub enum ToneRegister {
-    Sweep,
-    Duty,
-    Freq,
+    SweepL,
+    DutyL,
+    DutyH,
+    FreqL,
+    FreqH,
 }
 
 impl ToneChannel {
@@ -53,27 +56,28 @@ impl ToneChannel {
         DUTY_PATTERN[self.duty as usize][index] * volume
     }
 
-    pub fn read_register(&mut self, register: ToneRegister) -> u16 {
+    pub fn read_register(&mut self, register: ToneRegister) -> u8 {
         match register {
-            ToneRegister::Sweep if self.has_sweep => {
+            ToneRegister::SweepL if self.has_sweep => {
                 (self.sequencer.sweep_shift << 0)
-                    | ((self.sequencer.sweep_direction as u16) << 3)
-                    | ((self.sequencer.sweep_time as u16) << 4)
+                    | ((self.sequencer.sweep_direction as u8) << 3)
+                    | (self.sequencer.sweep_time << 4)
             }
-            ToneRegister::Sweep => 0,
-            ToneRegister::Duty => {
-                (self.duty << 6)
-                    | (self.sequencer.envelope_time << 8)
-                    | ((self.sequencer.envelope_direction as u16) << 11)
-                    | (self.sequencer.envelope_initial << 12)
+            ToneRegister::SweepL => 0,
+            ToneRegister::DutyL => self.duty << 6,
+            ToneRegister::DutyH => {
+                (self.sequencer.envelope_time << 0)
+                    | ((self.sequencer.envelope_direction as u8) << 3)
+                    | (self.sequencer.envelope_initial << 4)
             }
-            ToneRegister::Freq => ((self.sequencer.length_enabled) as u16) << 14,
+            ToneRegister::FreqL => 0,
+            ToneRegister::FreqH => ((self.sequencer.length_enabled) as u8) << 6,
         }
     }
 
-    pub fn write_register(&mut self, register: ToneRegister, value: u16) {
+    pub fn write_register(&mut self, register: ToneRegister, value: u8) {
         match register {
-            ToneRegister::Sweep if self.has_sweep => {
+            ToneRegister::SweepL if self.has_sweep => {
                 self.sequencer.sweep_shift = value.bit_range(0..3);
                 self.sequencer.sweep_direction = if value.bit(3) {
                     SweepDirection::Decrease
@@ -82,24 +86,34 @@ impl ToneChannel {
                 };
                 self.sequencer.sweep_time = value.bit_range(4..7);
             }
-            ToneRegister::Sweep => {}
-            ToneRegister::Duty => {
-                self.sequencer.length_counter = 64 - value.bit_range(0..6);
+            ToneRegister::SweepL => {}
+            ToneRegister::DutyL => {
+                self.sequencer.length_counter = 64 - (value.bit_range(0..6) as u16);
                 self.duty = value.bit_range(6..8);
-                self.sequencer.envelope_time = value.bit_range(8..11);
-                self.sequencer.envelope_direction = if value.bit(11) {
+            }
+            ToneRegister::DutyH => {
+                self.sequencer.envelope_time = value.bit_range(0..3);
+                self.sequencer.envelope_direction = if value.bit(3) {
                     EnvelopeDirection::Increase
                 } else {
                     EnvelopeDirection::Decrease
                 };
-                self.sequencer.envelope_initial = value.bit_range(12..16);
+                self.sequencer.envelope_initial = value.bit_range(4..8);
             }
-            ToneRegister::Freq => {
-                self.sequencer.sweep_initial_freq = value.bit_range(0..11);
+            ToneRegister::FreqL => {
+                self.sequencer
+                    .sweep_initial_freq
+                    .set_bit_range(0..8, value.bit_range(0..8) as u16);
                 self.sequencer.sweep_current_freq = self.sequencer.sweep_initial_freq;
-                self.sequencer.length_enabled = value.bit(14);
+            }
+            ToneRegister::FreqH => {
+                self.sequencer
+                    .sweep_initial_freq
+                    .set_bit_range(8..11, value.bit_range(0..3) as u16);
+                self.sequencer.sweep_current_freq = self.sequencer.sweep_initial_freq;
+                self.sequencer.length_enabled = value.bit(6);
 
-                if value.bit(15) {
+                if value.bit(7) {
                     self.sequencer.restart();
                 }
             }

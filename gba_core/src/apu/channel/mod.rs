@@ -12,13 +12,13 @@ pub struct Sequencer {
     pub enabled: bool,
 
     /// Change of frequency at each sweep shift.
-    sweep_shift: u16,
+    sweep_shift: u8,
     /// Whether the sweep causes frequency to increase or decrease.
     sweep_direction: SweepDirection,
     /// Sweep steps between frequency changes, or 0 for no sweep.
-    sweep_time: u16,
+    sweep_time: u8,
     /// Current sweep step counter (counts from `time` down to 0).
-    sweep_step: u16,
+    sweep_step: u8,
     /// Sweep initial frequency.
     sweep_initial_freq: u16,
     /// Sweep current frequency.
@@ -36,15 +36,15 @@ pub struct Sequencer {
     length_enabled: bool,
 
     /// Current step counter for the envelope unit (from `time` down to 0).
-    envelope_step: u16,
+    envelope_step: u8,
     /// Envelope steps between volume changes.
-    envelope_time: u16,
+    envelope_time: u8,
     /// Whether the envelope causes volume to increase or decrease.
     envelope_direction: EnvelopeDirection,
     /// Initial volume of the envelope.
-    envelope_initial: u16,
+    envelope_initial: u8,
     /// Volume of the envelope.
-    envelope_volume: u16,
+    envelope_volume: u8,
     /// Envelope enabled.
     envelope_enabled: bool,
 }

@@ -33,18 +33,18 @@ pub struct Apu {
     dma: [DmaChannel; 2],
 
     /// Sound 1-4 Master Channel Volume (LEFT, RIGHT) (0-7)
-    psg_channel_volume: [u16; 2],
+    psg_channel_volume: [u8; 2],
     /// Sound 1-4 Channel Enable Flags (LEFT, RIGHT))
     psg_channel_enable: [[bool; 4]; 2],
     /// Sound 1-4 Mixer Volume (50% or 100%)
-    psg_mixer_volume: u16,
+    psg_mixer_volume: u8,
     /// PSG/FIFO Master Enable
     master_enable: bool,
 
     /// Bias level.
     bias_level: u16,
     /// Amplitude Resolution / Sampling Cycle
-    resolution: u16,
+    resolution: u8,
 }
 
 impl Apu {

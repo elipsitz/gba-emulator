@@ -59,7 +59,11 @@ impl Gba {
             REG_IF => self.interrupt.pending,
             REG_DMA_START..=REG_DMA_END => self.dma_reg_read(addr - REG_DMA_START),
             REG_WAITCNT => self.io.waitcnt.0,
-            REG_SOUND_START..=REG_SOUND_END => self.apu_io_read(addr),
+            REG_SOUND_START..=REG_SOUND_END => {
+                let lo = self.apu_io_read(addr);
+                let hi = self.apu_io_read(addr + 1);
+                (lo as u16) | ((hi as u16) << 8)
+            }
             _ => 0,
         }
     }
@@ -145,7 +149,10 @@ impl Gba {
                 self.io.waitcnt.0 = value & 0x7FFF;
                 self.bus.update_waitcnt(self.io.waitcnt);
             }
-            REG_SOUND_START..=REG_SOUND_END => self.apu_io_write(addr, value),
+            REG_SOUND_START..=REG_SOUND_END => {
+                self.apu_io_write(addr, value as u8);
+                self.apu_io_write(addr + 1, (value >> 8) as u8);
+            }
             _ => {}
         }
     }
@@ -166,11 +173,16 @@ impl Gba {
     }
 
     pub fn io_read_8(&mut self, addr: u32) -> u8 {
-        let value = self.io_read_16(addr & !1);
-        if addr & 1 == 0 {
-            value as u8
-        } else {
-            (value >> 8) as u8
+        match addr {
+            REG_SOUND_START..=REG_SOUND_END => self.apu_io_read(addr),
+            _ => {
+                let value = self.io_read_16(addr & !1);
+                if addr & 1 == 0 {
+                    value as u8
+                } else {
+                    (value >> 8) as u8
+                }
+            }
         }
     }
 
@@ -184,7 +196,13 @@ impl Gba {
                     self.io.power_state = CpuPowerState::Halted;
                 }
             }
+            REG_SOUND_START..=REG_SOUND_END => self.apu_io_write(addr, value),
             _ => {
+                // XXX: this isn't really correct -- you can't just do a read
+                // of the other 8 bits and smash it together, since not every
+                // register is readable, and even some that are readable aren't
+                // completely readable (e.g. sound registers are only part
+                // readable).
                 let full = self.io_read_16(addr & !1);
                 let writeback = if addr & 1 == 0 {
                     // Replace the low byte.
@@ -328,23 +346,35 @@ pub const REG_HALTCNT: u32 = 0x0400_0301;
 pub const REG_DMA_START: u32 = 0x0400_00B0;
 pub const REG_DMA_END: u32 = 0x0400_00DE;
 
-pub const REG_SOUND1CNT_L: u32 = 0x0400_0060;
-pub const REG_SOUND1CNT_H: u32 = 0x0400_0062;
-pub const REG_SOUND1CNT_X: u32 = 0x0400_0064;
-pub const REG_SOUND2CNT_L: u32 = 0x0400_0068;
-pub const REG_SOUND2CNT_H: u32 = 0x0400_006C;
-pub const REG_SOUND3CNT_L: u32 = 0x0400_0070;
-pub const REG_SOUND3CNT_H: u32 = 0x0400_0072;
-pub const REG_SOUND3CNT_X: u32 = 0x0400_0074;
-pub const REG_SOUND4CNT_L: u32 = 0x0400_0078;
-pub const REG_SOUND4CNT_H: u32 = 0x0400_007C;
-pub const REG_SOUNDCNT_L: u32 = 0x0400_0080;
-pub const REG_SOUNDCNT_H: u32 = 0x0400_0082;
-pub const REG_SOUNDCNT_X: u32 = 0x0400_0084;
-pub const REG_SOUNDBIAS: u32 = 0x0400_0088;
+pub const REG_SOUND1CNT_L_L: u32 = 0x0400_0060;
+pub const REG_SOUND1CNT_H_L: u32 = 0x0400_0062;
+pub const REG_SOUND1CNT_H_H: u32 = 0x0400_0063;
+pub const REG_SOUND1CNT_X_L: u32 = 0x0400_0064;
+pub const REG_SOUND1CNT_X_H: u32 = 0x0400_0065;
+pub const REG_SOUND2CNT_L_L: u32 = 0x0400_0068;
+pub const REG_SOUND2CNT_L_H: u32 = 0x0400_0069;
+pub const REG_SOUND2CNT_H_L: u32 = 0x0400_006C;
+pub const REG_SOUND2CNT_H_H: u32 = 0x0400_006D;
+pub const REG_SOUND3CNT_L_L: u32 = 0x0400_0070;
+pub const REG_SOUND3CNT_L_H: u32 = 0x0400_0071;
+pub const REG_SOUND3CNT_H_L: u32 = 0x0400_0072;
+pub const REG_SOUND3CNT_H_H: u32 = 0x0400_0073;
+pub const REG_SOUND3CNT_X_L: u32 = 0x0400_0074;
+pub const REG_SOUND3CNT_X_H: u32 = 0x0400_0075;
+pub const REG_SOUND4CNT_L_L: u32 = 0x0400_0078;
+pub const REG_SOUND4CNT_L_H: u32 = 0x0400_0079;
+pub const REG_SOUND4CNT_H_L: u32 = 0x0400_007C;
+pub const REG_SOUND4CNT_H_H: u32 = 0x0400_007D;
+pub const REG_SOUNDCNT_L_L: u32 = 0x0400_0080;
+pub const REG_SOUNDCNT_L_H: u32 = 0x0400_0081;
+pub const REG_SOUNDCNT_H_L: u32 = 0x0400_0082;
+pub const REG_SOUNDCNT_H_H: u32 = 0x0400_0083;
+pub const REG_SOUNDCNT_X_L: u32 = 0x0400_0084;
+pub const REG_SOUNDBIAS_L: u32 = 0x0400_0088;
+pub const REG_SOUNDBIAS_H: u32 = 0x0400_0089;
 pub const REG_WAVE_RAM_START: u32 = 0x0400_0090;
 pub const REG_WAVE_RAM_END: u32 = 0x0400_009E;
 pub const REG_FIFO_A: u32 = 0x0400_00A0;
 pub const REG_FIFO_B: u32 = 0x0400_00A4;
-pub const REG_SOUND_START: u32 = REG_SOUND1CNT_L;
+pub const REG_SOUND_START: u32 = REG_SOUND1CNT_L_L;
 pub const REG_SOUND_END: u32 = 0x0400_00A8;
