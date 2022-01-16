@@ -72,7 +72,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
 
     let mut frame_counter = 0;
     let mut frame_timer = Instant::now();
-    let mut paused = true;
+    let mut paused = false;
     let mut single_step = false;
 
     let mut event_pump = sdl_context.event_pump()?;
@@ -176,7 +176,7 @@ fn main() {
     let backup_file = gba_core::util::make_backup_file(backup_path);
 
     let gba = gba_core::Gba::builder(bios.into(), rom)
-        //.skip_bios(true)
+        .skip_bios(true)
         .backup_file(backup_file)
         .build();
 

@@ -32,16 +32,12 @@ pub struct Apu {
     /// DMA audio channels
     dma: [DmaChannel; 2],
 
-    /// Sound 1-4 Master Volume RIGHT (0-7)
-    psg_volume_right: u16,
-    /// Sound 1-4 Master Volume LEFT (0-7)
-    psg_volume_left: u16,
-    /// Sound 1-4 Enable Flags RIGHT
-    psg_enable_right: [bool; 4],
-    /// Sound 1-4 Enable Flags LEFT
-    psg_enable_left: [bool; 4],
-    /// Sound 1-4 Volume
-    psg_volume: u16,
+    /// Sound 1-4 Master Channel Volume (LEFT, RIGHT) (0-7)
+    psg_channel_volume: [u16; 2],
+    /// Sound 1-4 Channel Enable Flags (LEFT, RIGHT))
+    psg_channel_enable: [[bool; 4]; 2],
+    /// Sound 1-4 Mixer Volume (50% or 100%)
+    psg_mixer_volume: u16,
     /// PSG/FIFO Master Enable
     master_enable: bool,
 
@@ -57,17 +53,15 @@ impl Apu {
             buffer: Vec::new(),
             sample: 0,
 
-            tone1: ToneChannel::new(),
-            tone2: ToneChannel::new(),
+            tone1: ToneChannel::new(true),
+            tone2: ToneChannel::new(false),
             dma: [DmaChannel::new(), DmaChannel::new()],
 
-            psg_volume_left: 0,
-            psg_volume_right: 0,
-            psg_enable_left: [false; 4],
-            psg_enable_right: [false; 4],
-            psg_volume: 0,
+            psg_channel_volume: [0; 2],
+            psg_channel_enable: [[false; 4]; 2],
+            psg_mixer_volume: 0,
             master_enable: false,
-            bias_level: 0x100,
+            bias_level: 0x200,
             resolution: 0,
         }
     }
@@ -75,12 +69,8 @@ impl Apu {
 
 impl Gba {
     pub(crate) fn apu_init(&mut self) {
-        self.scheduler
-            .push_event(Event::AudioSample, CYCLES_PER_SAMPLE);
-        self.scheduler.push_event(
-            Event::AudioSequencerTick,
-            channel::Sequencer::CYCLES_PER_TICK,
-        );
+        self.scheduler.push_event(Event::AudioSample, 0);
+        self.scheduler.push_event(Event::AudioSequencerTick, 0);
     }
 
     pub(crate) fn apu_on_sample_event(&mut self, lateness: usize) {
@@ -146,12 +136,29 @@ impl Gba {
 
     /// Emit a sample (left and right channels).
     fn emit_sample(&mut self) -> (i16, i16) {
+        let time = self.apu.sample * CYCLES_PER_SAMPLE;
         self.apu.sample += 1;
 
+        // TODO sample at the configured rate and then resample to the emulator output rate.
         // TODO handle master enable being off.
+
+        // 4x the PSG mixer volume.
+        let psg_volume = [1, 2, 4, 0][self.apu.psg_mixer_volume as usize];
 
         let mut sample = [0i16; 2];
         for channel in 0..2 {
+            let mut psg = 0i16;
+            if self.apu.psg_channel_enable[channel][0] {
+                psg += self.apu.tone1.sample(time);
+            }
+            if self.apu.psg_channel_enable[channel][1] {
+                psg += self.apu.tone2.sample(time);
+            }
+            let psg_channel_volume = self.apu.psg_channel_volume[channel] as i16;
+            // Divide by 28 -- 4 for mixer volume, 7 for channel volume.
+            psg = (psg * psg_volume * psg_channel_volume) / 28;
+            sample[channel] += psg;
+
             for fifo in 0..2 {
                 if self.apu.dma[fifo].channel[channel] {
                     let v = 2 << self.apu.dma[fifo].volume;
