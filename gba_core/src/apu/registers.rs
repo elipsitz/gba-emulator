@@ -17,6 +17,14 @@ impl Gba {
             REG_SOUND2CNT_L_H => self.apu.tone2.write_register(ToneRegister::DutyH, value),
             REG_SOUND2CNT_H_L => self.apu.tone2.write_register(ToneRegister::FreqL, value),
             REG_SOUND2CNT_H_H => self.apu.tone2.write_register(ToneRegister::FreqH, value),
+            REG_SOUND3CNT_START..=REG_SOUND3CNT_END => self
+                .apu
+                .wave
+                .write_register(addr - REG_SOUND3CNT_START, value),
+            REG_WAVE_RAM_START..=REG_WAVE_RAM_END => self
+                .apu
+                .wave
+                .write_wave_ram(addr - REG_WAVE_RAM_START, value),
             REG_SOUNDCNT_L_L => {
                 self.apu.psg_channel_volume[1] = value.bit_range(0..3);
                 self.apu.psg_channel_volume[0] = value.bit_range(4..7);
@@ -75,6 +83,12 @@ impl Gba {
             REG_SOUND2CNT_L_H => self.apu.tone2.read_register(ToneRegister::DutyH),
             REG_SOUND2CNT_H_L => self.apu.tone2.read_register(ToneRegister::FreqL),
             REG_SOUND2CNT_H_H => self.apu.tone2.read_register(ToneRegister::FreqH),
+            REG_SOUND3CNT_START..=REG_SOUND3CNT_END => {
+                self.apu.wave.read_register(addr - REG_SOUND3CNT_START)
+            }
+            REG_WAVE_RAM_START..=REG_WAVE_RAM_END => {
+                self.apu.wave.read_wave_ram(addr - REG_WAVE_RAM_START)
+            }
             REG_SOUNDCNT_L_L => {
                 (self.apu.psg_channel_volume[1] << 0) | (self.apu.psg_channel_volume[0] << 4)
             }
@@ -103,8 +117,9 @@ impl Gba {
             }
             REG_SOUNDCNT_X_L => {
                 // TODO handle Sound 1-4 ON flags
-                ((self.apu.tone1.sequencer.enabled as u8) << 0)
-                    | ((self.apu.tone2.sequencer.enabled as u8) << 1)
+                ((self.apu.tone1.enabled() as u8) << 0)
+                    | ((self.apu.tone2.enabled() as u8) << 1)
+                    | ((self.apu.wave.enabled() as u8) << 2)
                     | ((self.apu.master_enable as u8) << 7)
             }
             REG_SOUNDBIAS_L => (self.apu.bias_level & 0xFF) as u8,

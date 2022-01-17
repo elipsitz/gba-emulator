@@ -1,8 +1,10 @@
 mod dma;
 mod tone;
+mod wave;
 
 pub use dma::DmaChannel;
 pub use tone::{ToneChannel, ToneRegister};
+pub use wave::WaveChannel;
 
 /// Common controller for things that several channels use,
 /// length, volume envelope, and sweep.

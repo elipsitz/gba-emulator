@@ -6,8 +6,7 @@ use crate::{
     scheduler::Event,
     Gba,
 };
-use channel::DmaChannel;
-use channel::ToneChannel;
+use channel::{DmaChannel, ToneChannel, WaveChannel};
 
 /// Audio samples per second.
 pub const AUDIO_SAMPLE_RATE: usize = 32768;
@@ -29,6 +28,8 @@ pub struct Apu {
     tone1: ToneChannel,
     /// PSG Channel 2 - Tone
     tone2: ToneChannel,
+    /// PSG Channel 3 - Wave
+    wave: WaveChannel,
     /// DMA audio channels
     dma: [DmaChannel; 2],
 
@@ -55,6 +56,7 @@ impl Apu {
 
             tone1: ToneChannel::new(true),
             tone2: ToneChannel::new(false),
+            wave: WaveChannel::new(),
             dma: [DmaChannel::new(), DmaChannel::new()],
 
             psg_channel_volume: [0; 2],
@@ -95,7 +97,8 @@ impl Gba {
         for _ in 0..ticks {
             self.apu.tone1.sequencer.tick();
             self.apu.tone2.sequencer.tick();
-            // TODO tick channels 3 and 4 as well.
+            self.apu.wave.sequencer.tick();
+            // TODO tick channel 4 as well.
         }
     }
 
@@ -154,6 +157,9 @@ impl Gba {
             if self.apu.psg_channel_enable[channel][1] {
                 psg += self.apu.tone2.sample(time);
             }
+            if self.apu.psg_channel_enable[channel][2] {
+                psg += self.apu.wave.sample(time);
+            }
             let psg_channel_volume = self.apu.psg_channel_volume[channel] as i16;
             // Divide by 28 -- 4 for mixer volume, 7 for channel volume.
             psg = (psg * psg_volume * psg_channel_volume) / 28;
@@ -176,7 +182,8 @@ impl Gba {
             let biased = input + (self.apu.bias_level as i16);
             let output = biased.max(0).min(0x3FF);
             // XXX: maybe just output as a float? Rescale [0, 0x400) to [-1.0, 1.0)?
-            sample[i] = (output - 0x200) * 64;
+            // 64 is 100% volume without clipping. 32 is 50%.
+            sample[i] = (output - 0x200) * 32;
         }
 
         (sample[0], sample[1])

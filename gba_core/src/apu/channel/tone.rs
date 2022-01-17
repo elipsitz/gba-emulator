@@ -30,6 +30,10 @@ impl ToneChannel {
         }
     }
 
+    pub fn enabled(&self) -> bool {
+        self.sequencer.enabled
+    }
+
     pub fn sample(&self, time: usize) -> i16 {
         if !self.sequencer.enabled {
             return 0;
