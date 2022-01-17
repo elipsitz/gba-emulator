@@ -25,6 +25,11 @@ impl Gba {
                 .apu
                 .wave
                 .write_wave_ram(addr - REG_WAVE_RAM_START, value),
+            REG_SOUND4CNT_START..=REG_SOUND4CNT_END => {
+                self.apu
+                    .noise
+                    .write_register(addr - REG_SOUND4CNT_START, value);
+            }
             REG_SOUNDCNT_L_L => {
                 self.apu.psg_channel_volume[1] = value.bit_range(0..3);
                 self.apu.psg_channel_volume[0] = value.bit_range(4..7);
@@ -89,6 +94,9 @@ impl Gba {
             REG_WAVE_RAM_START..=REG_WAVE_RAM_END => {
                 self.apu.wave.read_wave_ram(addr - REG_WAVE_RAM_START)
             }
+            REG_SOUND4CNT_START..=REG_SOUND4CNT_END => {
+                self.apu.noise.read_register(addr - REG_SOUND4CNT_START)
+            }
             REG_SOUNDCNT_L_L => {
                 (self.apu.psg_channel_volume[1] << 0) | (self.apu.psg_channel_volume[0] << 4)
             }
@@ -116,10 +124,10 @@ impl Gba {
                     | ((self.apu.dma[1].timer as u8) << 6)
             }
             REG_SOUNDCNT_X_L => {
-                // TODO handle Sound 1-4 ON flags
                 ((self.apu.tone1.enabled() as u8) << 0)
                     | ((self.apu.tone2.enabled() as u8) << 1)
                     | ((self.apu.wave.enabled() as u8) << 2)
+                    | ((self.apu.noise.enabled() as u8) << 3)
                     | ((self.apu.master_enable as u8) << 7)
             }
             REG_SOUNDBIAS_L => (self.apu.bias_level & 0xFF) as u8,

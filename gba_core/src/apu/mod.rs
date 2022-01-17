@@ -6,7 +6,7 @@ use crate::{
     scheduler::Event,
     Gba,
 };
-use channel::{DmaChannel, ToneChannel, WaveChannel};
+use channel::{DmaChannel, NoiseChannel, ToneChannel, WaveChannel};
 
 /// Audio samples per second.
 pub const AUDIO_SAMPLE_RATE: usize = 32768;
@@ -30,6 +30,8 @@ pub struct Apu {
     tone2: ToneChannel,
     /// PSG Channel 3 - Wave
     wave: WaveChannel,
+    /// PSG Channel 4 - Noise
+    noise: NoiseChannel,
     /// DMA audio channels
     dma: [DmaChannel; 2],
 
@@ -57,6 +59,7 @@ impl Apu {
             tone1: ToneChannel::new(true),
             tone2: ToneChannel::new(false),
             wave: WaveChannel::new(),
+            noise: NoiseChannel::new(),
             dma: [DmaChannel::new(), DmaChannel::new()],
 
             psg_channel_volume: [0; 2],
@@ -98,7 +101,7 @@ impl Gba {
             self.apu.tone1.sequencer.tick();
             self.apu.tone2.sequencer.tick();
             self.apu.wave.sequencer.tick();
-            // TODO tick channel 4 as well.
+            self.apu.noise.sequencer.tick();
         }
     }
 
@@ -159,6 +162,9 @@ impl Gba {
             }
             if self.apu.psg_channel_enable[channel][2] {
                 psg += self.apu.wave.sample(time);
+            }
+            if self.apu.psg_channel_enable[channel][3] {
+                psg += self.apu.noise.sample(time);
             }
             let psg_channel_volume = self.apu.psg_channel_volume[channel] as i16;
             // Divide by 28 -- 4 for mixer volume, 7 for channel volume.

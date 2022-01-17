@@ -1,5 +1,4 @@
 ## Planned
-* Sound: PSG
 * EEPROM Backup
 * RTC
 * Save States

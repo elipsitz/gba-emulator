@@ -1,8 +1,10 @@
 mod dma;
+mod noise;
 mod tone;
 mod wave;
 
 pub use dma::DmaChannel;
+pub use noise::NoiseChannel;
 pub use tone::{ToneChannel, ToneRegister};
 pub use wave::WaveChannel;
 
