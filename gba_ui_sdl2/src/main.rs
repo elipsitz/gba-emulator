@@ -74,6 +74,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
     let mut frame_timer = Instant::now();
     let mut paused = false;
     let mut single_step = false;
+    let mut was_paused = paused; // Was paused before focus lost.
 
     let mut event_pump = sdl_context.event_pump()?;
     let mut last_event: Option<sdl2::event::Event> = None;
@@ -91,6 +92,16 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                 sdl2::event::Event::Quit { .. } => {
                     break 'running;
                 }
+                sdl2::event::Event::Window { win_event, .. } => match win_event {
+                    sdl2::event::WindowEvent::FocusGained => {
+                        paused = was_paused;
+                    }
+                    sdl2::event::WindowEvent::FocusLost => {
+                        was_paused = paused;
+                        paused = true;
+                    }
+                    _ => {}
+                },
                 sdl2::event::Event::KeyDown {
                     keycode: Some(code),
                     ..
