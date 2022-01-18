@@ -1,13 +1,14 @@
 mod backup;
 mod game_db;
+mod gpio;
 mod rom;
 
 pub use backup::{BackupFile, BackupType};
 pub use rom::Rom;
 
-use backup::{Backup, BackupBuffer};
-
 use crate::{bus, Gba};
+use backup::{Backup, BackupBuffer};
+use gpio::{Gpio, GpioType};
 
 /// State for a GamePak cartridge.
 pub struct Cartridge {
@@ -19,6 +20,9 @@ pub struct Cartridge {
 
     /// EEPROM chip address mask.
     eeprom_mask: u32,
+
+    /// State for the cartridge's GPIO (if one exists).
+    gpio: Option<Gpio>,
 }
 
 impl Cartridge {
@@ -27,6 +31,7 @@ impl Cartridge {
         let backup_type = backup_type
             .or(entry.map(|e| e.backup_type))
             .unwrap_or_else(|| BackupType::detect(&rom));
+        let gpio_type = entry.and_then(|e| e.gpio_type);
 
         eprintln!("Cartridge: using backup type {:?}", backup_type);
         let eeprom_mask = if rom.data.len() > 0x0100_0000 {
@@ -39,6 +44,7 @@ impl Cartridge {
             backup: Backup::new(backup_type),
             backup_buffer: BackupBuffer::default(),
             eeprom_mask,
+            gpio: gpio_type.map(|kind| Gpio::new(kind)),
         }
     }
 
@@ -46,6 +52,12 @@ impl Cartridge {
     /// Only valid if the save type is EEPROM.
     fn is_eeprom(&self, addr: u32) -> bool {
         (addr & self.eeprom_mask) == self.eeprom_mask
+    }
+
+    /// Returns whether an address would go to GPIO.
+    fn is_gpio(&self, addr: u32) -> bool {
+        let addr = addr & 0x01FF_FFFF;
+        addr >= 0xC4 && addr <= 0xC9
     }
 }
 
@@ -97,6 +109,15 @@ impl Gba {
             }
         }
 
+        // Check if we're reading from GPIO.
+        if self.cartridge.is_gpio(addr) {
+            if let Some(gpio) = &mut self.cartridge.gpio {
+                if let Some(data) = gpio.read(addr & 0x01FF_FFFF) {
+                    return data;
+                }
+            }
+        }
+
         (self.cart_read_8(addr) as u16) | ((self.cart_read_8(addr + 1) as u16) << 8)
     }
 
@@ -109,6 +130,14 @@ impl Gba {
         if self.cartridge.is_eeprom(addr) {
             if let Backup::Eeprom(eeprom) = &mut self.cartridge.backup {
                 eeprom.write(value, &self.dma, &mut self.cartridge.backup_buffer);
+            }
+        }
+
+        // Check if we're writing to GPIO.
+        if self.cartridge.is_gpio(addr) {
+            if let Some(gpio) = &mut self.cartridge.gpio {
+                gpio.write(addr & 0x01FF_FFFF, value);
+                return;
             }
         }
 
