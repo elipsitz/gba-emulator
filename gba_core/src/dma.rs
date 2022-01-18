@@ -140,6 +140,15 @@ impl Dma {
             channels: <[DmaChannel; 4]>::default(),
         }
     }
+
+    /// Return the transfer size of the DMA channel, if it's active.
+    pub fn transfer_size(&self, channel: usize) -> Option<u16> {
+        if self.active.bit(channel) {
+            Some(self.channels[channel].count)
+        } else {
+            None
+        }
+    }
 }
 
 impl Gba {
@@ -267,7 +276,7 @@ impl Gba {
             0x2 => (c.src = (c.src & 0x0000_FFFF) | (((value as u32) & 0x0FFF) << 16)),
             // Destination Address (27 bits).
             0x4 => (c.dest = (c.dest & 0xFFFF_0000) | (value as u32)),
-            0x6 => (c.dest = (c.dest & 0x0000_FFFF) | (((value as u32) & 0x07FF) << 16)),
+            0x6 => (c.dest = (c.dest & 0x0000_FFFF) | (((value as u32) & 0x0FFF) << 16)),
             // Transfer count.
             // XXX: see if different channels have different maximum counts.
             0x8 => c.count = value,

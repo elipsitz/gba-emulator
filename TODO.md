@@ -1,5 +1,4 @@
 ## Planned
-* EEPROM Backup
 * RTC
 * Save States
 * Better CLI

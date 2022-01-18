@@ -1,7 +1,9 @@
 use crate::Rom;
 
+mod eeprom;
 mod flash;
 
+pub use eeprom::{EepromBackup, EepromSize};
 pub use flash::{FlashBackup, FlashSize};
 
 #[derive(Copy, Clone, Debug)]
@@ -10,8 +12,14 @@ pub enum BackupType {
     /// No backup
     None,
 
-    /// EEPROM 512B or 8KiB
-    Eeprom,
+    /// EEPROM - Autodetect Size
+    EepromAuto,
+
+    /// EEPROM, 512B
+    Eeprom512,
+
+    /// EEPROM, 8KiB
+    Eeprom8K,
 
     /// SRAM or FRAM, 32 KiB
     Sram,
@@ -26,7 +34,7 @@ pub enum BackupType {
 impl BackupType {
     pub fn detect(rom: &Rom) -> BackupType {
         static PATTERNS: &[(&[u8], BackupType)] = &[
-            (b"EEPROM_V", BackupType::Eeprom),
+            (b"EEPROM_V", BackupType::EepromAuto),
             (b"SRAM_V", BackupType::Sram),
             (b"SRAM_F_V", BackupType::Sram),
             (b"FLASH_V", BackupType::Flash64K),
@@ -105,7 +113,7 @@ impl BackupBuffer {
 pub enum Backup {
     None,
     Sram,
-    Eeprom,
+    Eeprom(EepromBackup),
     Flash(FlashBackup),
 }
 
@@ -115,8 +123,9 @@ impl Backup {
         match backup_type {
             BackupType::None => Backup::None,
             BackupType::Sram => Backup::Sram,
-            // TODO: implement Eeprom.
-            BackupType::Eeprom => Backup::Eeprom,
+            BackupType::EepromAuto => Backup::Eeprom(EepromBackup::new(None)),
+            BackupType::Eeprom512 => Backup::Eeprom(EepromBackup::new(Some(EepromSize::Eeprom512))),
+            BackupType::Eeprom8K => Backup::Eeprom(EepromBackup::new(Some(EepromSize::Eeprom8K))),
             BackupType::Flash64K => Backup::Flash(FlashBackup::new(FlashSize::Flash64K)),
             BackupType::Flash128K => Backup::Flash(FlashBackup::new(FlashSize::Flash128K)),
         }
