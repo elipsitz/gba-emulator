@@ -9,7 +9,7 @@ pub struct Rom {
     game_title: String,
 
     /// Game code.
-    game_code: String,
+    pub(crate) game_code: String,
 
     /// Maker code.
     #[allow(unused)]

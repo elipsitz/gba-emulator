@@ -1,4 +1,5 @@
 mod backup;
+mod game_db;
 mod rom;
 
 pub use backup::{BackupFile, BackupType};
@@ -21,8 +22,13 @@ pub struct Cartridge {
 }
 
 impl Cartridge {
-    pub fn new(rom: &Rom) -> Cartridge {
-        let backup_type = BackupType::detect(&rom);
+    pub fn new(rom: &Rom, backup_type: Option<BackupType>) -> Cartridge {
+        let entry = game_db::lookup(&rom.game_code);
+        let backup_type = backup_type
+            .or(entry.map(|e| e.backup_type))
+            .unwrap_or_else(|| BackupType::detect(&rom));
+
+        eprintln!("Cartridge: using backup type {:?}", backup_type);
         let eeprom_mask = if rom.data.len() > 0x0100_0000 {
             // Above 16 MiB.
             0x01FF_FF00

@@ -1,8 +1,8 @@
 use std::ops::DerefMut;
 
 use crate::{
-    interrupt::InterruptManager, io::CpuPowerState, Apu, BackupFile, Bus, Cartridge, Cpu, Dma,
-    Event, Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
+    cartridge::BackupType, interrupt::InterruptManager, io::CpuPowerState, Apu, BackupFile, Bus,
+    Cartridge, Cpu, Dma, Event, Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
 };
 
 pub const WIDTH: usize = 240;
@@ -70,6 +70,9 @@ pub struct GbaBuilder {
 
     /// The backing storage for the cartridge backup.
     backup_file: Option<Box<dyn BackupFile>>,
+
+    /// Backup type (or None for autodetection).
+    backup_type: Option<BackupType>,
 }
 
 impl Gba {
@@ -80,12 +83,13 @@ impl Gba {
             cart_rom,
             skip_bios: false,
             backup_file: None,
+            backup_type: None,
         }
     }
 
     /// Create a new GBA emulator from the builder.
     fn build(builder: GbaBuilder) -> Gba {
-        let cartridge = Cartridge::new(&builder.cart_rom);
+        let cartridge = Cartridge::new(&builder.cart_rom, builder.backup_type);
         let mut gba = Gba {
             cart_rom: builder.cart_rom,
             bios_rom: builder.bios_rom,
@@ -214,6 +218,12 @@ impl GbaBuilder {
     /// Set the backup file.
     pub fn backup_file(mut self, backup_file: Box<dyn BackupFile>) -> Self {
         self.backup_file = Some(backup_file);
+        self
+    }
+
+    /// Set the backup type. Overrides autodetection.
+    pub fn backup_type(mut self, backup_type: BackupType) -> Self {
+        self.backup_type = Some(backup_type);
         self
     }
 
