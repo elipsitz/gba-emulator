@@ -7,6 +7,7 @@ edition = "2021"
 
 [dependencies]
 bit = "0.1.1"
+chrono = "0.4"
 
 [build-dependencies]
 bit = "0.1.1"

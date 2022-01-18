@@ -34,6 +34,7 @@ impl Cartridge {
         let gpio_type = entry.and_then(|e| e.gpio_type);
 
         eprintln!("Cartridge: using backup type {:?}", backup_type);
+        eprintln!("Cartridge: using GPIO {:?}", gpio_type);
         let eeprom_mask = if rom.data.len() > 0x0100_0000 {
             // Above 16 MiB.
             0x01FF_FF00

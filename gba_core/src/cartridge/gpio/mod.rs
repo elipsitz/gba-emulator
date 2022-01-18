@@ -1,5 +1,9 @@
 use bit::BitIndex;
 
+use crate::cartridge::gpio::rtc::Rtc;
+
+mod rtc;
+
 const REG_DATA: u32 = 0xC4;
 const REG_DIRECTION: u32 = 0xC6;
 const REG_CONTROL: u32 = 0xC8;
@@ -11,6 +15,11 @@ pub struct Gpio {
 
     /// The direction for each data bit.
     direction: [GpioDirection; 4],
+
+    /// The device connected to the GPIO.
+    /// For now, always RTC.
+    /// TODO: see about supporting other devices
+    device: Rtc,
 }
 
 /// Type of GPIO-connected chip.
@@ -20,7 +29,7 @@ pub enum GpioType {
     Rtc,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum GpioDirection {
     /// Input to GBA.
     In = 0,
@@ -35,6 +44,7 @@ impl Gpio {
         Gpio {
             readable: false,
             direction: [GpioDirection::In; 4],
+            device: Rtc::new(),
         }
     }
 
@@ -48,9 +58,9 @@ impl Gpio {
 
         let out = match addr {
             REG_DATA => {
-                // TODO
-                println!("GPIO read");
-                0
+                // XXX: mask it so you only get input pins?
+                let data = self.device.pin_read();
+                (data as u16) & 0b1111
             }
             REG_DIRECTION => {
                 ((self.direction[0] as u16) << 0)
@@ -68,8 +78,8 @@ impl Gpio {
     pub fn write(&mut self, addr: u32, value: u16) {
         match addr {
             REG_DATA => {
-                // TODO
-                println!("GPIO write {:04b}", value);
+                // XXX: mask it so you only get output pins?
+                self.device.pin_write((value & 0b1111) as u8);
             }
             REG_DIRECTION => {
                 for i in 0..4 {

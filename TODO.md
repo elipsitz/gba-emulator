@@ -1,5 +1,4 @@
 ## Planned
-* RTC
 * Save States
 * Better CLI
 * DMA: Special timing mode
