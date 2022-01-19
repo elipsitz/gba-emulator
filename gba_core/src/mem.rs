@@ -27,6 +27,8 @@ pub trait Memory {
     }
 }
 
+use std::convert::TryInto;
+
 impl Memory for [u8] {
     fn read_8(&mut self, addr: Addr) -> u8 {
         self[addr as usize]
@@ -34,5 +36,27 @@ impl Memory for [u8] {
 
     fn write_8(&mut self, addr: Addr, value: u8) {
         self[addr as usize] = value;
+    }
+
+    fn read_16(&mut self, addr: Addr) -> u16 {
+        let addr = (addr & !0b1) as usize;
+        u16::from_le_bytes(self[addr..(addr + 2)].try_into().unwrap())
+    }
+
+    fn write_16(&mut self, addr: Addr, value: u16) {
+        let addr = (addr & !0b1) as usize;
+        let array = <&mut [u8; 2]>::try_from(&mut self[addr..(addr + 2)]).unwrap();
+        *array = value.to_le_bytes();
+    }
+
+    fn read_32(&mut self, addr: Addr) -> u32 {
+        let addr = (addr & !0b11) as usize;
+        u32::from_le_bytes(self[addr..(addr + 4)].try_into().unwrap())
+    }
+
+    fn write_32(&mut self, addr: Addr, value: u32) {
+        let addr = (addr & !0b11) as usize;
+        let array = <&mut [u8; 4]>::try_from(&mut self[addr..(addr + 4)]).unwrap();
+        *array = value.to_le_bytes();
     }
 }
