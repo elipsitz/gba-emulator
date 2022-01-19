@@ -55,10 +55,10 @@ impl Bus {
     /// New bus in the initial state.
     pub fn new() -> Bus {
         let mut bus = Bus {
-            wait_s16: [0; 16],
-            wait_n16: [0; 16],
-            wait_s32: [0; 16],
-            wait_n32: [0; 16],
+            wait_s16: [1; 16],
+            wait_n16: [1; 16],
+            wait_s32: [1; 16],
+            wait_n32: [1; 16],
             bios_last_load: 0,
         };
 
