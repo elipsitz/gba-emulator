@@ -20,6 +20,9 @@ pub struct NoiseChannel {
     freq_s: u8,
     /// LSFR width (0 = 15 bits, 1 = 7 bits)
     width: LfsrWidth,
+
+    /// Whether the channel is enabled (via the DAC).
+    dac_enable: bool,
 }
 
 impl NoiseChannel {
@@ -29,11 +32,12 @@ impl NoiseChannel {
             freq_r: 0,
             freq_s: 0,
             width: LfsrWidth::Width15,
+            dac_enable: false,
         }
     }
 
     pub fn enabled(&self) -> bool {
-        self.sequencer.enabled
+        self.sequencer.enabled && self.dac_enable
     }
 
     pub fn sample(&self, time: usize) -> i16 {
@@ -87,6 +91,7 @@ impl NoiseChannel {
                     EnvelopeDirection::Decrease
                 };
                 self.sequencer.envelope_initial = value.bit_range(4..8);
+                self.dac_enable = value.bit_range(3..8) != 0;
             }
             4 => {
                 self.freq_r = value.bit_range(0..3);

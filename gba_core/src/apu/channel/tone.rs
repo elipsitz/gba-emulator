@@ -10,6 +10,9 @@ pub struct ToneChannel {
 
     /// Wave duty type (0-3).
     duty: u8,
+
+    /// Whether the channel is enabled (via the DAC).
+    dac_enable: bool,
 }
 
 #[derive(Debug)]
@@ -27,11 +30,12 @@ impl ToneChannel {
             has_sweep,
             sequencer: Sequencer::new(64),
             duty: 0,
+            dac_enable: false,
         }
     }
 
     pub fn enabled(&self) -> bool {
-        self.sequencer.enabled
+        self.sequencer.enabled && self.dac_enable
     }
 
     pub fn sample(&self, time: usize) -> i16 {
@@ -103,6 +107,7 @@ impl ToneChannel {
                     EnvelopeDirection::Decrease
                 };
                 self.sequencer.envelope_initial = value.bit_range(4..8);
+                self.dac_enable = value.bit_range(3..8) != 0;
             }
             ToneRegister::FreqL => {
                 self.sequencer
