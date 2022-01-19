@@ -401,7 +401,7 @@ fn arm_exec_ldm_stm<
     for reg in 0..=REG_PC {
         if reg_list.bit(reg) {
             if LOAD {
-                let value = s.cpu_load32(address, access_type);
+                let value = s.cpu_load32(address & !0b11, access_type);
                 s.cpu_reg_set(reg, value);
                 if reg == REG_PC && S {
                     s.restore_spsr();
@@ -421,7 +421,7 @@ fn arm_exec_ldm_stm<
                         base.wrapping_sub(4 * num_registers)
                     };
                 }
-                s.cpu_store32(address, value, access_type);
+                s.cpu_store32(address & !0b11, value, access_type);
             }
             first = false;
             address += 4;

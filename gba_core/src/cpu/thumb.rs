@@ -459,7 +459,7 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
     for reg in 0..=7 {
         if reg_list.bit(reg) {
             if POP {
-                let value = s.cpu_load32(address, access_type);
+                let value = s.cpu_load32(address & !0b11, access_type);
                 s.cpu_reg_set(reg, value);
             } else {
                 let value = s.cpu_reg_get(reg);
@@ -475,7 +475,7 @@ fn thumb_exec_push_pop<const POP: bool, const PC_LR: bool>(
     if PC_LR {
         if POP {
             // Pop PC.
-            let value = s.cpu_load32(address, access_type);
+            let value = s.cpu_load32(address & !0b11, access_type);
             s.cpu_reg_set(REG_PC, value);
             instruction_result = InstructionResult::Branch;
         } else {
@@ -509,7 +509,7 @@ fn thumb_exec_ldr_str_multiple<const LOAD: bool>(s: &mut Gba, inst: u16) -> Inst
         for reg in 0..=7 {
             if reg_list.bit(reg) {
                 if LOAD {
-                    let value = s.cpu_load32(address, access_type);
+                    let value = s.cpu_load32(address & !0b11, access_type);
                     s.cpu_reg_set(reg, value);
                 } else {
                     let mut value = s.cpu_reg_get(reg);
@@ -531,7 +531,7 @@ fn thumb_exec_ldr_str_multiple<const LOAD: bool>(s: &mut Gba, inst: u16) -> Inst
         // all registers were transferred.
         new_address = start_address + 0x40;
         if LOAD {
-            let value = s.cpu_load32(start_address, NonSequential);
+            let value = s.cpu_load32(start_address & !0b11, NonSequential);
             s.cpu_reg_set(REG_PC, value);
             InstructionResult::Branch
         } else {
