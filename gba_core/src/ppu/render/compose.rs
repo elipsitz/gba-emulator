@@ -100,13 +100,13 @@ impl Gba {
             return top.color;
         }
 
-        let blend_mode = if object_blend {
+        let blend_top = self.ppu.bldcnt.top[top.kind];
+        let blend_bottom = self.ppu.bldcnt.bottom[bottom.kind];
+        let blend_mode = if object_blend && blend_bottom {
             BlendMode::Normal
         } else {
             self.ppu.bldcnt.mode
         };
-        let blend_top = self.ppu.bldcnt.top[top.kind];
-        let blend_bottom = self.ppu.bldcnt.bottom[bottom.kind];
         let blend_enabled = (blend_top && blend_mode != BlendMode::None) || object_blend;
 
         if blend_enabled {
