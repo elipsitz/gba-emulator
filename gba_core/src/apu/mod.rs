@@ -11,6 +11,9 @@ use channel::{DmaChannel, NoiseChannel, ToneChannel, WaveChannel};
 /// Audio samples per second.
 pub const AUDIO_SAMPLE_RATE: usize = 32768;
 
+/// Number of audio channels.
+pub const AUDIO_CHANNELS: usize = 2;
+
 /// Cycles per audio sample.
 pub const CYCLES_PER_SAMPLE: usize = 512;
 

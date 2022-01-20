@@ -3,7 +3,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-use gba_core::{Gba, KeypadState};
+use gba_core::{Gba, KeypadState, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE};
 
 use sdl2::keyboard::Keycode;
 use sdl2::pixels::Color;
@@ -65,7 +65,12 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
     let audio_spec_desired = sdl2::audio::AudioSpecDesired {
         freq: Some(gba_core::AUDIO_SAMPLE_RATE as i32),
         channels: Some(2),
-        samples: None,
+        // Number of samples in the audio buffer. Must be a power of two.
+        // We want this to be no more than ~0.5 frames, otherwise the audio drain
+        // callback doesn't run frequently enough and we have to
+        // either increase our buffer (causing latency) or deal with stutters.
+        // This (256) with a sample rate of 32*1024 Hz is ~0.469 frames.
+        samples: Some(256),
     };
     let audio_device = audio_subsystem.open_queue::<i16, _>(None, &audio_spec_desired)?;
     audio_device.resume();
@@ -141,12 +146,17 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
             canvas.present();
 
             // Each "sample frame" is a sample from (left, right) -- 4 bytes.
-            let samples_queued = (audio_device.size() as usize) / 4;
-            // Target maximum of 8 frames of samples in the buffer.
-            let samples_max = 8 * gba_core::AUDIO_SAMPLE_RATE / 60;
+            let samples_queued =
+                (audio_device.size() as usize) / (std::mem::size_of::<i16>() * AUDIO_CHANNELS);
+            // let frames_queued = 60.0 * ((samples_queued as f64) / (AUDIO_SAMPLE_RATE as f64));
+            // println!("audio queued: {:>7} samples  =  {:>7}frames", samples_queued, frames_queued);
+            // Target maximum of 2 frames of samples in the buffer.
+            let samples_max = 2 * AUDIO_SAMPLE_RATE / 60;
             if samples_queued < samples_max {
                 let buffer = gba.audio_buffer();
-                let to_add = buffer.len().min((samples_max - samples_queued) * 2);
+                let to_add = buffer
+                    .len()
+                    .min((samples_max - samples_queued) * AUDIO_CHANNELS);
                 audio_device.queue(&buffer[..to_add]);
             }
         } else {

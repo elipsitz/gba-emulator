@@ -25,7 +25,7 @@ use ppu::Ppu;
 use scheduler::{Event, Scheduler};
 use timer::TimerManager;
 
-pub use apu::AUDIO_SAMPLE_RATE;
+pub use apu::{AUDIO_CHANNELS, AUDIO_SAMPLE_RATE};
 pub use cartridge::{BackupFile, BackupType, Rom};
 pub use gba::{Gba, HEIGHT, WIDTH};
 pub use keypad::KeypadState;
