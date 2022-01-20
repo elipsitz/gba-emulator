@@ -53,8 +53,8 @@ pub struct Gba {
     /// On-chip ("internal") work RAM.
     pub(crate) iwram: [u8; 32 * 1024],
 
-    /// How much we overshot the last frame by.
-    last_frame_overshoot: usize,
+    /// How much we overshot the last emulate_cycles request by.
+    last_emulation_overshoot: usize,
 
     /// Current keypad state.
     pub(crate) keypad_state: KeypadState,
@@ -107,7 +107,7 @@ impl Gba {
             cartridge,
             ewram: [0; 256 * 1024],
             iwram: [0; 32 * 1024],
-            last_frame_overshoot: 0,
+            last_emulation_overshoot: 0,
             keypad_state: KeypadState::default(),
         };
         gba.ppu_init();
@@ -182,12 +182,23 @@ impl Gba {
 
     /// Emulate a frame.
     pub fn emulate_frame(&mut self) {
+        const FRAME_CYCLES: usize = (240 + 68) * (160 + 68) * 4;
+        self.emulate_cycles(FRAME_CYCLES);
+    }
+
+    /// Emulate for the given number of cycles.
+    ///
+    /// Starts by clearing the audio sample buffer.
+    pub fn emulate_cycles(&mut self, cycles: usize) {
         self.apu_buffer_clear();
 
-        let frame_cycles = (240 + 68) * (160 + 68) * 4;
-        let run_cycles = frame_cycles - self.last_frame_overshoot;
-        let actually_ran = self.run(run_cycles);
-        self.last_frame_overshoot = actually_ran - run_cycles;
+        if cycles <= self.last_emulation_overshoot {
+            self.last_emulation_overshoot -= cycles;
+        } else {
+            let run_cycles = cycles - self.last_emulation_overshoot;
+            let actually_ran = self.run(run_cycles);
+            self.last_emulation_overshoot = actually_ran - run_cycles;
+        }
 
         // Persist the backup buffer (if it's dirty).
         if let Some(backup_file) = self.cart_backup_file.as_mut() {
