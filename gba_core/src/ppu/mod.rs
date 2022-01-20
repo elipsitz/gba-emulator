@@ -171,7 +171,11 @@ impl Gba {
         if self.ppu.dispstat.hblank_irq {
             self.interrupt_raise(InterruptKind::HBlank);
         }
+
         self.dma_notify_hblank();
+        if self.ppu.vcount >= 2 {
+            self.dma_notify_video();
+        }
 
         (PpuEvent::EndHBlank, CYCLES_HBLANK)
     }
@@ -216,6 +220,9 @@ impl Gba {
         self.ppu.dispstat.hblank = true;
         if self.ppu.dispstat.hblank_irq {
             self.interrupt_raise(InterruptKind::HBlank);
+        }
+        if self.ppu.vcount < 162 {
+            self.dma_notify_video();
         }
 
         (PpuEvent::EndVBlankHBlank, CYCLES_HBLANK)

@@ -316,7 +316,6 @@ impl Gba {
                         let event = crate::scheduler::Event::DmaActivate(channel_index as u8);
                         self.scheduler.push_event(event, 2);
                     }
-                    // TODO: implement TimingMode::Special for non-AUDIO FIFO
                 }
 
                 c.control = control;
@@ -356,6 +355,16 @@ impl Gba {
             if channel.control.enabled() && channel.control.timing() == TimingMode::HBlank {
                 self.dma_activate_channel(i);
             }
+        }
+    }
+
+    /// Called by the PPU on "video" updates (hblank during scanlines 2..162).
+    pub(crate) fn dma_notify_video(&mut self) {
+        // Only relevant for channel 3.
+        let i = 3;
+        let channel = &self.dma.channels[i];
+        if channel.control.enabled() && channel.control.timing() == TimingMode::Special {
+            self.dma_activate_channel(i);
         }
     }
 

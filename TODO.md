@@ -1,7 +1,6 @@
 ## Planned
 * Save States
 * Better CLI
-* DMA: Special timing mode
 * Audio sync (with vsync)
 
 
