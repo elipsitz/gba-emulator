@@ -193,7 +193,13 @@ fn main() {
     let rom = gba_core::Rom::new(&rom_data);
     println!("Loaded {:?}", rom);
 
-    let backup_path = format!("{}.sav", rom_path);
+    let rom_base_path = if rom_path.ends_with(".gba") {
+        &rom_path[..(rom_path.len() - 4)]
+    } else {
+        rom_path
+    };
+    let backup_path = format!("{}.sav", rom_base_path);
+    println!("Using cartridge save path {}", backup_path);
     let backup_file = gba_core::util::make_backup_file(backup_path);
 
     let gba = gba_core::Gba::builder(bios.into(), rom)
