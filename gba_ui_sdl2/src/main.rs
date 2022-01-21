@@ -147,9 +147,6 @@ fn run_emulator(mut gba: Gba, base_path: &str) -> Result<(), String> {
                                 Err(_) => println!("Nothing to load."),
                             }
                         }
-                        Keycode::Escape => {
-                            break 'running;
-                        }
                         _ => {}
                     }
                 }
