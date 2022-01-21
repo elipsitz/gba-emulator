@@ -5,7 +5,7 @@ use std::{
 
 use gba_core::{Gba, KeypadState, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE};
 
-use sdl2::keyboard::{Keycode, Scancode};
+use sdl2::keyboard::{Keycode, Mod, Scancode};
 use sdl2::pixels::Color;
 
 const WIDTH: u32 = gba_core::WIDTH as u32;
@@ -109,20 +109,24 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                 },
                 sdl2::event::Event::KeyDown {
                     keycode: Some(code),
+                    keymod,
                     ..
-                } => match code {
-                    Keycode::Space => {
-                        paused = !paused;
+                } => {
+                    let command = keymod == Mod::LGUIMOD || keymod == Mod::RGUIMOD;
+                    match code {
+                        Keycode::P if command => {
+                            paused = !paused;
+                        }
+                        Keycode::N if command => {
+                            paused = true;
+                            single_step = true;
+                        }
+                        Keycode::Escape => {
+                            break 'running;
+                        }
+                        _ => {}
                     }
-                    Keycode::Tab => {
-                        paused = true;
-                        single_step = true;
-                    }
-                    Keycode::Escape => {
-                        break 'running;
-                    }
-                    _ => {}
-                },
+                }
                 _ => {}
             }
         }
@@ -132,7 +136,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
 
         let fast_forward = event_pump
             .keyboard_state()
-            .is_scancode_pressed(Scancode::Grave);
+            .is_scancode_pressed(Scancode::Tab);
         if !paused || single_step {
             single_step = false;
 
