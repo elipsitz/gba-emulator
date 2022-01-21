@@ -5,7 +5,7 @@ use std::{
 
 use gba_core::{Gba, KeypadState, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE};
 
-use sdl2::keyboard::Keycode;
+use sdl2::keyboard::{Keycode, Scancode};
 use sdl2::pixels::Color;
 
 const WIDTH: u32 = gba_core::WIDTH as u32;
@@ -121,9 +121,6 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                     Keycode::Escape => {
                         break 'running;
                     }
-                    Keycode::Backquote => {
-                        // TODO: unrestrict FPS.
-                    }
                     _ => {}
                 },
                 _ => {}
@@ -133,10 +130,18 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
         let keypad = get_keypad_state(&event_pump);
         gba.set_keypad_state(keypad);
 
+        let fast_forward = event_pump
+            .keyboard_state()
+            .is_scancode_pressed(Scancode::Grave);
         if !paused || single_step {
             single_step = false;
-            gba.emulate_frame();
-            frame_counter += 1;
+
+            let speed = if fast_forward { 4 } else { 1 };
+            for _ in 0..speed {
+                gba.emulate_frame();
+                frame_counter += 1;
+            }
+
             let buffer = gba.framebuffer();
             let buffer = unsafe { std::mem::transmute::<&[u32], &[u8]>(buffer) };
             texture
