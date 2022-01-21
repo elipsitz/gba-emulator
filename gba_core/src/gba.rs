@@ -5,16 +5,22 @@ use crate::{
     Cartridge, Cpu, Dma, Event, Io, KeypadState, Ppu, Rom, Scheduler, TimerManager,
 };
 
+use serde::{Deserialize, Serialize};
+
 pub const WIDTH: usize = 240;
 pub const HEIGHT: usize = 160;
 
 /// Game Boy Advance Emulator
+#[derive(Serialize, Deserialize)]
 pub struct Gba {
     /// The cartridge ROM.
+    #[serde(skip)]
     pub(crate) cart_rom: Rom,
     /// The 16 KiB BIOS ROM.
+    #[serde(skip)]
     pub(crate) bios_rom: Box<[u8]>,
     /// The cartridge backup file.
+    #[serde(skip)]
     pub(crate) cart_backup_file: Option<Box<dyn BackupFile>>,
 
     /// CPU state.
@@ -48,10 +54,10 @@ pub struct Gba {
     pub(crate) cartridge: Cartridge,
 
     /// On-board ("external") work RAM.
-    pub(crate) ewram: [u8; 256 * 1024],
+    pub(crate) ewram: Box<[u8]>,
 
     /// On-chip ("internal") work RAM.
-    pub(crate) iwram: [u8; 32 * 1024],
+    pub(crate) iwram: Box<[u8]>,
 
     /// How much we overshot the last emulate_cycles request by.
     last_emulation_overshoot: usize,
@@ -110,8 +116,8 @@ impl Gba {
             dma: Dma::new(),
             timer: TimerManager::new(),
             cartridge,
-            ewram: [0; 256 * 1024],
-            iwram: [0; 32 * 1024],
+            ewram: Box::new([0; 256 * 1024]),
+            iwram: Box::new([0; 32 * 1024]),
             last_emulation_overshoot: 0,
             keypad_state: KeypadState::default(),
             should_render: false,
@@ -224,6 +230,24 @@ impl Gba {
     /// This is a sequence of samples, interleaving the left and right channels.
     pub fn audio_buffer(&self) -> &[i16] {
         self.apu_buffer()
+    }
+
+    /// Serialize the current state of the emulator.
+    ///
+    /// This does not modify the cartridge or BIOS ROMs.
+    pub fn save_state(&self) -> Vec<u8> {
+        bincode::serialize(&self).expect("Failed to serialize state")
+    }
+
+    pub fn load_state(&mut self, data: &[u8]) {
+        let mut new_gba: Gba = bincode::deserialize(data).expect("Failed to deserialize state");
+
+        // Swap the whole state, then replace the parts we didn't deserialize.
+        use std::mem::swap;
+        swap(self, &mut new_gba);
+        swap(&mut self.cart_rom, &mut new_gba.cart_rom);
+        swap(&mut self.bios_rom, &mut new_gba.bios_rom);
+        swap(&mut self.cart_backup_file, &mut new_gba.cart_backup_file);
     }
 }
 

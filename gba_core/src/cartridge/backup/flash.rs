@@ -1,6 +1,8 @@
+use serde::{Deserialize, Serialize};
+
 use super::BackupBuffer;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub enum FlashSize {
     Flash64K,
     Flash128K,
@@ -35,7 +37,7 @@ impl FlashSize {
     }
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 enum CommandState {
     Ready,
     Setup1,
@@ -45,6 +47,7 @@ enum CommandState {
 }
 
 /// A flash backup.
+#[derive(Serialize, Deserialize)]
 pub struct FlashBackup {
     size: FlashSize,
 

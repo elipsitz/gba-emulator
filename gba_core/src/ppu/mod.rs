@@ -24,7 +24,9 @@ mod constants {
     pub const CYCLES_FRAME: usize = CYCLES_VDRAW + CYCLES_VBLANK;
 }
 pub use constants::*;
+use serde::{Deserialize, Serialize};
 
+#[derive(Serialize, Deserialize)]
 pub struct Ppu {
     /// Framebuffer: row major, each pixel is ARGB, length (WIDTH * HEIGHT).
     pub framebuffer: Box<[u32]>,
@@ -251,7 +253,7 @@ impl Gba {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 pub enum ColorMode {
     /// 4 bits per pixel (16 colors).
     Bpp4 = 0,

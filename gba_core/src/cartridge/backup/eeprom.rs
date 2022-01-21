@@ -1,10 +1,11 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::Dma;
 
 use super::BackupBuffer;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub enum EepromSize {
     /// 512 byte EEPROM.
     Eeprom512,
@@ -22,6 +23,7 @@ impl EepromSize {
     }
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct EepromBackup {
     /// Size of the EEPROM, or None if it's pending autodetection.
     size: Option<EepromSize>,
@@ -41,7 +43,7 @@ pub struct EepromBackup {
     address: usize,
 }
 
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 enum State {
     /// Waiting for a command.
     Waiting,
@@ -57,7 +59,7 @@ enum State {
     Writing,
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 enum RequestType {
     Read,
     Write,

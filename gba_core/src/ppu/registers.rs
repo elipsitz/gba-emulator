@@ -1,11 +1,12 @@
 use std::hint::unreachable_unchecked;
 
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use super::ColorMode;
 
 /// DISPCNT - LCD Control
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct DisplayControl {
     /// Video mode.
     pub mode: u16,
@@ -76,7 +77,7 @@ impl DisplayControl {
 }
 
 /// DISPSTAT - General LCD Status
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct DisplayStatus {
     /// True during vblank (160..=226 only).
     pub vblank: bool,
@@ -113,7 +114,7 @@ impl DisplayStatus {
     }
 }
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct BackgroundSize(u16);
 
 impl BackgroundSize {
@@ -140,7 +141,7 @@ impl BackgroundSize {
 }
 
 /// BGxCNT - Background Control
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct BackgroundControl {
     /// BG Priority
     pub priority: u16,
@@ -201,7 +202,7 @@ impl BackgroundControl {
 }
 
 /// Affine background registers.
-#[derive(Default, Copy, Clone, Debug)]
+#[derive(Default, Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct BackgroundAffine {
     pub pa: i16,
     pub pb: i16,
@@ -214,7 +215,7 @@ pub struct BackgroundAffine {
 }
 
 /// MOSAIC - Mosaic size.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct Mosaic {
     /// BG mosaic actual h-size.
     pub bg_x: u8,
@@ -247,7 +248,7 @@ impl Mosaic {
 }
 
 /// Blend mode.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum BlendMode {
     None = 0b00,
     Normal = 0b01,
@@ -256,7 +257,7 @@ pub enum BlendMode {
 }
 
 /// BLDCNT - Blend Control
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct BlendControl {
     /// Top and bottom layers.
     /// (bg0, bg1, bg2, bg3, obj, backdrop)
@@ -303,7 +304,7 @@ impl BlendControl {
 }
 
 /// BLDALPHA - Blend alpha values
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize)]
 pub struct BlendAlpha {
     /// Top blend weight.
     pub top: u16,
@@ -323,7 +324,7 @@ impl BlendAlpha {
 }
 
 /// BLDT - Blend fade values
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize)]
 pub struct BlendFade {
     /// Top blend fade weight.
     pub fade: u16,
@@ -336,7 +337,7 @@ impl BlendFade {
 }
 
 /// WIN[01][HV] - Window bounds.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize)]
 pub struct WindowBounds {
     /// Start (left or top), inclusive
     pub min: u8,
@@ -360,7 +361,7 @@ impl WindowBounds {
     }
 }
 
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize)]
 /// Part of WINOUT/WININ -- control for a single window.
 pub struct WindowControl {
     /// Whether the given layer is enabled in this window.
@@ -395,13 +396,13 @@ impl WindowControl {
     }
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct WindowIn {
     pub win0: WindowControl,
     pub win1: WindowControl,
 }
 
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct WindowOut {
     pub win_out: WindowControl,
     pub win_obj: WindowControl,

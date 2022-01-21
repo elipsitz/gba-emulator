@@ -1,7 +1,9 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use super::Sequencer;
 
+#[derive(Serialize, Deserialize)]
 pub struct WaveChannel {
     pub sequencer: Sequencer,
 

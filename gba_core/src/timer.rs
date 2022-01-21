@@ -1,4 +1,5 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::{interrupt::InterruptKind, scheduler::Event, Gba};
 
@@ -18,6 +19,7 @@ const INTERRUPTS: [InterruptKind; 4] = [
 /// to the last time they were updated. We do these updates only when we need to:
 /// when a timer register is read or written. We also keep track of when the next
 /// overflow IRQ is going to happen, and set up a scheduler event so we don't miss it.
+#[derive(Serialize, Deserialize)]
 pub struct TimerManager {
     timers: [Timer; NUM_TIMERS],
     /// Last timestamp the timers were updated.
@@ -25,7 +27,7 @@ pub struct TimerManager {
 }
 
 /// A single timer.
-#[derive(Default, Debug)]
+#[derive(Default, Debug, Serialize, Deserialize)]
 struct Timer {
     /// Current count of the timer.
     count: u16,
@@ -36,7 +38,7 @@ struct Timer {
 }
 
 /// Timer control register.
-#[derive(Copy, Clone, Default)]
+#[derive(Copy, Clone, Default, Serialize, Deserialize)]
 struct TimerControl(u16);
 
 impl TimerControl {

@@ -1,8 +1,10 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::Gba;
 
 /// State for memory mapped IO controller.
+#[derive(Serialize, Deserialize)]
 pub struct Io {
     /// Value of the KEYCNT (keypad control) register.
     pub keycnt: u16,
@@ -12,7 +14,7 @@ pub struct Io {
     pub waitcnt: WaitControl,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub enum CpuPowerState {
     /// Regular power state, running as usual.
     Normal,
@@ -238,7 +240,7 @@ fn set_reg_displacement_hi(register: &mut i32, value: u16) {
 }
 
 /// The WAITCNT register.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 pub struct WaitControl(pub u16);
 
 impl WaitControl {

@@ -80,6 +80,7 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
     let mut paused = false;
     let mut single_step = false;
     let mut was_paused = paused; // Was paused before focus lost.
+    let mut save_state: Option<Vec<u8>> = None;
 
     let mut event_pump = sdl_context.event_pump()?;
     let mut last_event: Option<sdl2::event::Event> = None;
@@ -120,6 +121,17 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                         Keycode::N if command => {
                             paused = true;
                             single_step = true;
+                        }
+                        Keycode::S if command => {
+                            let state = gba.save_state();
+                            save_state = Some(state);
+                            println!("Saved state.");
+                        }
+                        Keycode::L if command => {
+                            if let Some(state) = &save_state {
+                                gba.load_state(&state);
+                                println!("Loaded state.");
+                            }
                         }
                         Keycode::Escape => {
                             break 'running;

@@ -1,9 +1,11 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::apu::channel::EnvelopeDirection;
 
 use super::{Sequencer, SweepDirection};
 
+#[derive(Serialize, Deserialize)]
 pub struct ToneChannel {
     has_sweep: bool,
     pub sequencer: Sequencer,

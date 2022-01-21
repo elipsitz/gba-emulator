@@ -1,8 +1,9 @@
 use super::{CpuExecutionState, CpuMode};
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 /// Program status register.
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct ProgramStatusRegister {
     /// Condition flag "negative".
     /// Bit 31 of PSR.

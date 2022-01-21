@@ -1,9 +1,10 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::{Gba, InterruptKind};
 
 /// Keypad State
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 pub struct KeypadState {
     pub a: bool,
     pub b: bool,

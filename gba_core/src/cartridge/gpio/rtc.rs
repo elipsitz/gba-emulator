@@ -1,5 +1,6 @@
 use bit::BitIndex;
 use chrono::{Datelike, Timelike};
+use serde::{Deserialize, Serialize};
 
 /// Clock Pin
 const PIN_SCK: usize = 0;
@@ -8,7 +9,7 @@ const PIN_SIO: usize = 1;
 /// Chip-Select Pin
 const PIN_CS: usize = 2;
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 enum Register {
     /// Forces time to reset.
     ForceReset = 0,
@@ -28,7 +29,7 @@ enum Register {
     Free = 7,
 }
 
-#[derive(Copy, Clone, Debug)]
+#[derive(Copy, Clone, Debug, Serialize, Deserialize)]
 enum State {
     /// Waiting for a command opcode.
     Waiting,
@@ -69,6 +70,7 @@ impl Register {
 }
 
 /// State for the real-time clock.
+#[derive(Serialize, Deserialize)]
 pub struct Rtc {
     /// Whether chip-select is enabled.
     selected: bool,

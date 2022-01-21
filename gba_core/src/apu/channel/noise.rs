@@ -1,16 +1,18 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use super::{EnvelopeDirection, Sequencer};
 
 const LEN_7: usize = 0x7F;
 const LEN_15: usize = 0x7FFF;
 
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 enum LfsrWidth {
     Width15 = 0,
     Width7 = 1,
 }
 
+#[derive(Serialize, Deserialize)]
 pub struct NoiseChannel {
     pub sequencer: Sequencer,
 

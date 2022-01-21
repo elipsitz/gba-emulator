@@ -7,6 +7,7 @@ use crate::{
     Gba,
 };
 use channel::{DmaChannel, NoiseChannel, ToneChannel, WaveChannel};
+use serde::{Deserialize, Serialize};
 
 /// Audio samples per second.
 pub const AUDIO_SAMPLE_RATE: usize = 32768;
@@ -21,6 +22,7 @@ const CHANNEL_LEFT: usize = 0;
 const CHANNEL_RIGHT: usize = 1;
 
 /// Audio processing unit state.
+#[derive(Serialize, Deserialize)]
 pub struct Apu {
     /// Audio buffer: interleaving left/right samples.
     buffer: Vec<i16>,

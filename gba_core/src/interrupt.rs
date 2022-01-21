@@ -1,7 +1,9 @@
 use crate::Gba;
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 /// State for the interrupt manager.
+#[derive(Serialize, Deserialize)]
 pub struct InterruptManager {
     /// Whether interrupts are enabled.
     pub global_enabled: bool,

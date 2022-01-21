@@ -1,6 +1,9 @@
 use std::collections::BinaryHeap;
 
+use serde::{Deserialize, Serialize};
+
 /// Scheduler, which manages events that happen at certain timestamps.
+#[derive(Serialize, Deserialize)]
 pub struct Scheduler {
     /// The current time (in cycles).
     time: usize,
@@ -9,7 +12,7 @@ pub struct Scheduler {
     queue: BinaryHeap<ScheduledEvent>,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Event {
     /// Stop running the emulator.
     StopRunning,
@@ -30,7 +33,7 @@ pub enum Event {
     AudioSequencerTick,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum PpuEvent {
     /// End of h-draw (during v-draw).
     EndHDraw,
@@ -106,7 +109,7 @@ impl Scheduler {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Serialize, Deserialize)]
 pub struct ScheduledEvent {
     /// Time at which the event should fire.
     deadline: usize,

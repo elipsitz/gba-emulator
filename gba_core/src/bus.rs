@@ -1,10 +1,13 @@
 #![allow(unused)]
 
+use serde::{Deserialize, Serialize};
+
 use crate::{cpu::CpuExecutionState, io::WaitControl, Addr, Gba, Memory};
 
 const BIOS_SIZE: u32 = 0x4000;
 
 /// State for the system memory bus.
+#[derive(Serialize, Deserialize)]
 pub struct Bus {
     wait_s16: [usize; 16],
     wait_n16: [usize; 16],
@@ -16,7 +19,7 @@ pub struct Bus {
 }
 
 /// Memory access types.
-#[derive(Copy, Clone, PartialEq, Debug)]
+#[derive(Copy, Clone, PartialEq, Debug, Serialize, Deserialize)]
 pub enum MemoryAccessType {
     Sequential,
     NonSequential,

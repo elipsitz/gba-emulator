@@ -8,8 +8,9 @@ mod thumb;
 use crate::bus::MemoryAccessType;
 use crate::Gba;
 use psr::ProgramStatusRegister;
+use serde::{Deserialize, Serialize};
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[repr(u8)]
 pub enum CpuExecutionState {
     /// ARM execution state.
@@ -23,7 +24,7 @@ const REG_PC: usize = 15;
 const REG_LR: usize = 14;
 const REG_SP: usize = 13;
 
-#[derive(Copy, Clone, Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[repr(u32)]
 pub enum CpuMode {
     User = 0b10000,
@@ -80,6 +81,7 @@ enum InstructionResult {
 }
 
 /// State for the CPU.
+#[derive(Serialize, Deserialize)]
 pub struct Cpu {
     /// r15: the program counter.
     /// Reflects the instruction currently being *fetched* (not executed).

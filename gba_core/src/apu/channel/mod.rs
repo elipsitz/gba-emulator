@@ -5,11 +5,13 @@ mod wave;
 
 pub use dma::DmaChannel;
 pub use noise::NoiseChannel;
+use serde::{Deserialize, Serialize};
 pub use tone::{ToneChannel, ToneRegister};
 pub use wave::WaveChannel;
 
 /// Common controller for things that several channels use,
 /// length, volume envelope, and sweep.
+#[derive(Serialize, Deserialize)]
 pub struct Sequencer {
     step: u8,
     /// Whether the channel is enabled (may be disabled by length or sweep).
@@ -154,13 +156,13 @@ impl Sequencer {
     }
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SweepDirection {
     Increase = 0,
     Decrease = 1,
 }
 
-#[derive(Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum EnvelopeDirection {
     Decrease = 0,
     Increase = 1,

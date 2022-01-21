@@ -59,6 +59,16 @@ impl Rom {
             maker_code,
         }
     }
+
+    /// Create an empty ROM (no cartridge).
+    pub fn empty() -> Rom {
+        Rom {
+            data: Box::new([]),
+            game_title: "".to_string(),
+            game_code: "".to_string(),
+            maker_code: "".to_string(),
+        }
+    }
 }
 
 impl std::fmt::Debug for Rom {
@@ -71,5 +81,11 @@ impl std::fmt::Debug for Rom {
             self.game_code,
             backup_type,
         ))
+    }
+}
+
+impl Default for Rom {
+    fn default() -> Self {
+        Rom::empty()
     }
 }

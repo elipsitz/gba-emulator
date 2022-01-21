@@ -7,10 +7,12 @@ use crate::{
     Gba,
 };
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 const NUM_CHANNELS: usize = 4;
 
 /// State for the DMA controller.
+#[derive(Serialize, Deserialize)]
 pub struct Dma {
     channels: [DmaChannel; NUM_CHANNELS],
     /// Active channel bitfield.
@@ -18,6 +20,7 @@ pub struct Dma {
 }
 
 /// A single DMA channel.
+#[derive(Serialize, Deserialize)]
 struct DmaChannel {
     /// Source address register.
     src: u32,
@@ -58,7 +61,7 @@ impl Default for DmaChannel {
 }
 
 /// DMA control register.
-#[derive(Copy, Clone)]
+#[derive(Copy, Clone, Serialize, Deserialize)]
 struct DmaChannelControl(u16);
 
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]

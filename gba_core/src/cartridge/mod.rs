@@ -5,12 +5,14 @@ mod rom;
 
 pub use backup::{BackupFile, BackupType};
 pub use rom::Rom;
+use serde::{Deserialize, Serialize};
 
 use crate::{bus, Gba};
 use backup::{Backup, BackupBuffer};
 use gpio::{Gpio, GpioType};
 
 /// State for a GamePak cartridge.
+#[derive(Serialize, Deserialize)]
 pub struct Cartridge {
     /// State for the current cartridge backup.
     pub backup: Backup,

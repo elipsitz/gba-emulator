@@ -5,6 +5,7 @@ mod flash;
 
 pub use eeprom::{EepromBackup, EepromSize};
 pub use flash::{FlashBackup, FlashSize};
+use serde::{Deserialize, Serialize};
 
 #[derive(Copy, Clone, Debug)]
 
@@ -67,7 +68,7 @@ pub trait BackupFile {
 }
 
 /// In-memory buffer for the backup file.
-#[derive(Default)]
+#[derive(Default, Serialize, Deserialize)]
 pub struct BackupBuffer {
     pub storage: Vec<u8>,
 
@@ -110,6 +111,7 @@ impl BackupBuffer {
 }
 
 /// A concrete cartridge backup.
+#[derive(Serialize, Deserialize)]
 pub enum Backup {
     None,
     Sram,

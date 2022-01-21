@@ -1,4 +1,7 @@
+use serde::{Deserialize, Serialize};
+
 /// A DMA audio channel
+#[derive(Serialize, Deserialize)]
 pub struct DmaChannel {
     /// Channel volume (0=50%, 1=100%)
     pub volume: u8,
@@ -30,6 +33,7 @@ impl DmaChannel {
 pub const FIFO_SIZE: usize = 32;
 
 /// Circular array backed FIFO queue of samples.
+#[derive(Serialize, Deserialize)]
 pub struct Fifo {
     buffer: [i8; FIFO_SIZE],
     count: usize,

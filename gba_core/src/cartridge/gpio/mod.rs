@@ -1,4 +1,5 @@
 use bit::BitIndex;
+use serde::{Deserialize, Serialize};
 
 use crate::cartridge::gpio::rtc::Rtc;
 
@@ -9,6 +10,7 @@ const REG_DIRECTION: u32 = 0xC6;
 const REG_CONTROL: u32 = 0xC8;
 
 /// State for the GPIO interface in the cartridge (and whatever it's connected to).
+#[derive(Serialize, Deserialize)]
 pub struct Gpio {
     /// Whether the GPIO registers are readable.
     readable: bool,
@@ -29,7 +31,7 @@ pub enum GpioType {
     Rtc,
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Debug)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug, Serialize, Deserialize)]
 pub enum GpioDirection {
     /// Input to GBA.
     In = 0,
