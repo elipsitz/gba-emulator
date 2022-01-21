@@ -86,10 +86,12 @@ impl Gba {
         let next_sample = CYCLES_PER_SAMPLE - (lateness % CYCLES_PER_SAMPLE);
         self.scheduler.push_event(Event::AudioSample, next_sample);
 
-        for _ in 0..samples {
-            let (left, right) = self.emit_sample();
-            self.apu.buffer.push(left);
-            self.apu.buffer.push(right);
+        if self.should_render {
+            for _ in 0..samples {
+                let (left, right) = self.emit_sample();
+                self.apu.buffer.push(left);
+                self.apu.buffer.push(right);
+            }
         }
     }
 

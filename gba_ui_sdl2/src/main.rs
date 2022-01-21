@@ -141,8 +141,8 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
             single_step = false;
 
             let speed = if fast_forward { 4 } else { 1 };
-            for _ in 0..speed {
-                gba.emulate_frame();
+            for i in 0..speed {
+                gba.emulate_frame(i == speed - 1);
                 frame_counter += 1;
             }
 

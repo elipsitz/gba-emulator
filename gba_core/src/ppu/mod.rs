@@ -208,9 +208,9 @@ impl Gba {
             }
 
             // Draw the next scanline (which is visible).
-            // XXX: I think we need to fire (and process) vcount interrupt before rendering line.
-            // See the red line when vcount has priority in tonc interrupt demo.
-            self.ppu_render_scanline();
+            if self.should_render {
+                self.ppu_render_scanline();
+            }
 
             (PpuEvent::EndHDraw, CYCLES_HDRAW)
         }

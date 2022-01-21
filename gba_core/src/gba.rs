@@ -58,6 +58,11 @@ pub struct Gba {
 
     /// Current keypad state.
     pub(crate) keypad_state: KeypadState,
+
+    /// Whether we should generate audio and video.
+    ///
+    /// This may be set to false during fast forwarding.
+    pub(crate) should_render: bool,
 }
 
 /// Builder struct for [`Gba`].
@@ -109,6 +114,7 @@ impl Gba {
             iwram: [0; 32 * 1024],
             last_emulation_overshoot: 0,
             keypad_state: KeypadState::default(),
+            should_render: false,
         };
         gba.ppu_init();
         gba.apu_init();
@@ -181,9 +187,11 @@ impl Gba {
     }
 
     /// Emulate a frame.
-    pub fn emulate_frame(&mut self) {
+    pub fn emulate_frame(&mut self, should_render: bool) {
+        self.should_render = should_render;
         const FRAME_CYCLES: usize = (240 + 68) * (160 + 68) * 4;
         self.emulate_cycles(FRAME_CYCLES);
+        self.should_render = true;
     }
 
     /// Emulate for the given number of cycles.
