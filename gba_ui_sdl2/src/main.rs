@@ -1,8 +1,10 @@
 use std::{
-    fs,
+    fs::{self, File},
+    io::{Read, Write},
     time::{Duration, Instant},
 };
 
+use flate2::{read::ZlibDecoder, write::ZlibEncoder, Compression};
 use gba_core::{Gba, KeypadState, AUDIO_CHANNELS, AUDIO_SAMPLE_RATE};
 
 use sdl2::keyboard::{Keycode, Mod, Scancode};
@@ -36,7 +38,9 @@ fn get_keypad_state(event_pump: &sdl2::EventPump) -> KeypadState {
     keypad
 }
 
-fn run_emulator(mut gba: Gba) -> Result<(), String> {
+fn run_emulator(mut gba: Gba, base_path: &str) -> Result<(), String> {
+    let save_state_path = format!("{}.save_state", base_path);
+
     let sdl_context = sdl2::init()?;
     let video_subsystem = sdl_context.video()?;
     let audio_subsystem = sdl_context.audio()?;
@@ -80,7 +84,6 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
     let mut paused = false;
     let mut single_step = false;
     let mut was_paused = paused; // Was paused before focus lost.
-    let mut save_state: Option<Vec<u8>> = None;
 
     let mut event_pump = sdl_context.event_pump()?;
     let mut last_event: Option<sdl2::event::Event> = None;
@@ -123,14 +126,25 @@ fn run_emulator(mut gba: Gba) -> Result<(), String> {
                             single_step = true;
                         }
                         Keycode::S if command => {
+                            // Save state.
                             let state = gba.save_state();
-                            save_state = Some(state);
-                            println!("Saved state.");
+                            let f = File::create(&save_state_path).unwrap();
+                            let mut writer = ZlibEncoder::new(f, Compression::default());
+                            writer.write_all(&state).unwrap();
+                            println!("Saved state to {}", &save_state_path);
                         }
                         Keycode::L if command => {
-                            if let Some(state) = &save_state {
-                                gba.load_state(&state);
-                                println!("Loaded state.");
+                            let mut output = vec![];
+                            let result = File::open(&save_state_path)
+                                .map_err(|_| ())
+                                .map(|f| ZlibDecoder::new(f))
+                                .and_then(|mut d| d.read_to_end(&mut output).map_err(|_| ()));
+                            match result {
+                                Ok(_) => {
+                                    gba.load_state(&output);
+                                    println!("Loaded state from {}", &save_state_path)
+                                }
+                                Err(_) => println!("Nothing to load."),
                             }
                         }
                         Keycode::Escape => {
@@ -214,12 +228,12 @@ fn main() {
     let rom = gba_core::Rom::new(&rom_data);
     println!("Loaded {:?}", rom);
 
-    let rom_base_path = if rom_path.ends_with(".gba") {
+    let base_path = if rom_path.ends_with(".gba") {
         &rom_path[..(rom_path.len() - 4)]
     } else {
         rom_path
     };
-    let backup_path = format!("{}.sav", rom_base_path);
+    let backup_path = format!("{}.sav", base_path);
     println!("Using cartridge save path {}", backup_path);
     let backup_file = gba_core::util::make_backup_file(backup_path);
 
@@ -228,5 +242,5 @@ fn main() {
         .backup_file(backup_file)
         .build();
 
-    run_emulator(gba).unwrap();
+    run_emulator(gba, base_path).unwrap();
 }
