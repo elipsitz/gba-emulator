@@ -9,3 +9,4 @@ edition = "2021"
 gba_core = { path = "../gba_core" }
 sdl2 = "0.35.1"
 flate2 = "1.0.22"
+clap = { version = "3.0.10", features = ["derive"] }

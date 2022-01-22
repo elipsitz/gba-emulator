@@ -1,7 +1,5 @@
 ## Planned
-* Save States
-* Better CLI
-* Audio sync (with vsync)
+* Resampling audio
 
 
 ## Maybe

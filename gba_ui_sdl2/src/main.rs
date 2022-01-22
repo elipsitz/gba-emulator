@@ -14,6 +14,24 @@ const WIDTH: u32 = gba_core::WIDTH as u32;
 const HEIGHT: u32 = gba_core::HEIGHT as u32;
 const SCALE: u32 = 2;
 
+use clap::Parser;
+
+/// GBA Emulator
+#[derive(Parser, Debug)]
+#[clap(about, long_about = None)]
+struct Args {
+    /// Path of the ROM to run.
+    rom_path: String,
+
+    /// Path of the BIOS to use.
+    #[clap(long)]
+    bios_path: String,
+
+    /// Whether to skip the BIOS boot animation
+    #[clap(long)]
+    skip_bios: bool,
+}
+
 fn get_keypad_state(event_pump: &sdl2::EventPump) -> KeypadState {
     let mut keypad = KeypadState::default();
     let keyboard_state = event_pump.keyboard_state();
@@ -210,32 +228,26 @@ fn run_emulator(mut gba: Gba, base_path: &str) -> Result<(), String> {
 }
 
 fn main() {
-    let args = std::env::args().collect::<Vec<_>>();
-    if args.len() != 2 {
-        eprintln!("Usage: gba <path to rom>");
-        std::process::exit(1);
-    }
+    let args = Args::parse();
 
-    let bios_path = "roms/bios.bin";
-    let bios = fs::read(bios_path).expect("failed to read bios");
-    assert_eq!(bios.len(), 16 * 1024);
+    let bios = fs::read(&args.bios_path).expect("failed to read bios");
+    assert_eq!(bios.len(), 16 * 1024, "BIOS must be 16 KiB");
 
-    let rom_path = &args[1];
-    let rom_data = fs::read(rom_path).expect("failed to read ROM");
+    let rom_data = fs::read(&args.rom_path).expect("failed to read ROM");
     let rom = gba_core::Rom::new(&rom_data);
     println!("Loaded {:?}", rom);
 
-    let base_path = if rom_path.ends_with(".gba") {
-        &rom_path[..(rom_path.len() - 4)]
+    let base_path = if args.rom_path.ends_with(".gba") {
+        &args.rom_path[..(args.rom_path.len() - 4)]
     } else {
-        rom_path
+        &args.rom_path
     };
     let backup_path = format!("{}.sav", base_path);
     println!("Using cartridge save path {}", backup_path);
     let backup_file = gba_core::util::make_backup_file(backup_path);
 
     let gba = gba_core::Gba::builder(bios.into(), rom)
-        .skip_bios(true)
+        .skip_bios(args.skip_bios)
         .backup_file(backup_file)
         .build();
 
