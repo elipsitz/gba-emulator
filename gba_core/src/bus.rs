@@ -272,7 +272,12 @@ impl Gba {
             REGION_EWRAM => self.ewram.write_8(addr & 0x3FFFF, data),
             REGION_IWRAM => self.iwram.write_8(addr & 0x7FFF, data),
             REGION_IO => self.io_write_8(addr, data),
-            REGION_VRAM => self.ppu.vram.write_8(addr & 0x1FFFF, data), // TODO wrap better?
+            REGION_VRAM => {
+                // Byte writes to VRAM do a 16-bit write (same byte duplicated).
+                let addr = (addr & 0x1FFFE) as usize;
+                self.ppu.vram[addr] = data;
+                self.ppu.vram[addr | 1] = data;
+            }
             REGION_PALETTE => self.ppu.palette.write_8(addr & 0x3FF, data),
             REGION_OAM => self.ppu.oam.write_8(addr & 0x3FF, data),
             REGION_CART_WS0_A..=REGION_CART_UNUSED => self.cart_write_8(addr, data),
