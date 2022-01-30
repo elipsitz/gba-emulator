@@ -41,7 +41,7 @@ impl ToneChannel {
     }
 
     pub fn sample(&self, time: usize) -> i16 {
-        if !self.sequencer.enabled {
+        if !self.enabled() {
             return 0;
         }
 
