@@ -51,7 +51,7 @@ pub const REGION_CART_UNUSED: Addr = 0xF;
 /// Address to region.
 #[inline(always)]
 pub fn region_from_address(addr: Addr) -> u32 {
-    (addr & 0x0F00_0000) >> 24
+    (addr & 0xFF00_0000) >> 24
 }
 
 impl Bus {
